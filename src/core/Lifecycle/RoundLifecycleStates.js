@@ -1,0 +1,13 @@
+const RoundLifecycleStates = Object.freeze({
+  CREATED: "CREATED",
+  WAITING_BETS: "WAITING_BETS",
+  READY_TO_ROLL: "READY_TO_ROLL",
+  ROLLING: "ROLLING",
+  RESOLVING: "RESOLVING",
+  FUNDING: "FUNDING",
+  PAYMENT: "PAYMENT",
+  FINISHED: "FINISHED",
+  CANCELLED: "CANCELLED",
+});
+
+export default RoundLifecycleStates;
