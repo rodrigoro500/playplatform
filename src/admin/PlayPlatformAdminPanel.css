@@ -53,6 +53,7 @@
 
 .admin-header-link,
 .admin-row-actions a,
+.admin-pending-list a,
 .admin-card button {
   border: 1px solid rgba(52, 211, 153, 0.42);
   border-radius: 8px;
@@ -66,6 +67,23 @@
   text-align: center;
   text-decoration: none;
   text-transform: uppercase;
+}
+
+.admin-card button:disabled,
+.admin-card input:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.admin-alert {
+  border: 1px solid rgba(252, 211, 77, 0.24);
+  border-radius: 9px;
+  background: rgba(120, 53, 15, 0.16);
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 12px;
+  padding: 10px 12px;
 }
 
 .admin-layout {
@@ -204,6 +222,16 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 9px 10px;
+}
+
+.admin-pending-list a {
+  padding: 6px 9px;
+}
+
+.admin-join-layout {
+  display: grid;
+  margin: 42px auto 0;
+  max-width: 540px;
 }
 
 .admin-next-list {
