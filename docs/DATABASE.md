@@ -281,3 +281,39 @@ Tipos:
 - player
 - system
 - admin
+
+---
+
+# SUPABASE V1 - MVP PUBLICADO
+
+Archivo listo para ejecutar:
+
+- `docs/supabase_schema_v1.sql`
+
+## Tablas creadas
+
+- `play_tables`: mesas creadas desde el panel.
+- `table_invites`: invitaciones y links para jugadores.
+- `table_players`: jugadores que entran a una mesa.
+- `wallets`: saldo de fichas por jugador.
+- `chip_requests`: solicitudes de carga de fichas.
+- `wallet_transactions`: movimientos contables de cada saldo.
+- `table_events`: eventos de mesa para historial y sincronizacion.
+- `game_snapshots`: estado vivo de la mesa.
+
+## Como crear las tablas
+
+1. Entrar a Supabase.
+2. Abrir el proyecto de PlayPlatform.
+3. Ir a `SQL Editor`.
+4. Crear una consulta nueva.
+5. Copiar todo el contenido de `docs/supabase_schema_v1.sql`.
+6. Ejecutar con `Run`.
+
+## Politicas de seguridad
+
+La version V1 incluye politicas publicas temporales para poder probar rapido desde Vercel usando la anon key.
+
+Esto sirve para pruebas iniciales, pero no es seguridad final.
+
+Antes de manejar usuarios reales o dinero real hay que reemplazar estas politicas por autenticacion de administrador y permisos por jugador.
