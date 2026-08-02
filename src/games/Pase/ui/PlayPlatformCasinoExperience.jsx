@@ -20,6 +20,7 @@ const phaseLabels = {
   WAITING_TABLE: "Mesa lista",
   WAITING_MAIN_POT: "Armando pozo",
   WAITING_ROLL: "Esperando tirada",
+  ROLLING_DICE: "Girando dados",
   POINT_ACTIVE: "Punto activo",
   ROUND_FINISHED: "Ronda resuelta",
 };
@@ -168,13 +169,14 @@ function PlayerBadge({
   player,
   index,
   prompted = false,
+  current = false,
   quickBet = null,
 }) {
   const initials = player.name.slice(0, 2).toUpperCase();
 
   return (
     <div className={`casino-player seat-${index} ${prompted ? "is-prompted" : ""}`}>
-      <div className={`casino-player-card ${player.isShooter ? "is-shooter" : ""} ${prompted ? "is-prompted" : ""}`}>
+      <div className={`casino-player-card ${player.isShooter ? "is-shooter" : ""} ${prompted ? "is-prompted" : ""} ${current ? "is-current-player" : ""}`}>
         <div className="casino-player-avatar">
           {initials}
         </div>
@@ -212,14 +214,6 @@ function AvailableSeat({
       <div className="casino-player-card is-available">
         <div className="casino-player-avatar available">
           +
-        </div>
-        <div>
-          <div className="casino-player-name">
-            Disponible
-          </div>
-          <div className="casino-player-money">
-            Esperando jugador
-          </div>
         </div>
       </div>
     </div>
@@ -482,6 +476,7 @@ function GameTable({
   onCoverMainPot,
   onPassMainPotCoverage,
   onSelectCoverAmount,
+  currentPlayerId,
 }) {
   const diceValues =
     isRolling ? rollingDice :
@@ -524,6 +519,7 @@ function GameTable({
           player={player}
           index={index}
           prompted={table.mainPot.promptedCoverPlayerId === player.id}
+          current={currentPlayerId === player.id}
           quickBet={latestBets.get(player.id)}
         />
       ))}
@@ -685,6 +681,15 @@ function BottomBar({
   const mainPotAmountValue = Number(mainPotAmount) || 0;
   const coverAmountValue = Number(coverAmount) || 0;
   const mainPotCopado = table.mainPot.status === "COPADO";
+  const shouldAskShooter =
+    table.mainPot.status === "PREGUNTAR_TIRADOR" ||
+    (
+      !mainPotCopado &&
+      table.mainPot.status !== "ESPERANDO_TIRADOR" &&
+      table.mainPot.total === 0 &&
+      table.mainPot.requiredCover === 0 &&
+      !table.mainPot.promptedCoverPlayerId
+    );
   const canSetShooterStake =
     currentPlayerId === table.shooterId &&
     mainPotAmountValue >= 20000 &&
@@ -711,7 +716,7 @@ function BottomBar({
 
   return (
     <div className="casino-bottom-bar">
-      {table.mainPot.status === "PREGUNTAR_TIRADOR" && (
+      {shouldAskShooter && (
         <div className="casino-action-box wide">
           <small>{currentPlayerId === table.shooterId ? "Tu turno" : "Cambio de turno"}</small>
           <strong>{shooter?.name ?? "Sin tirador"}</strong>
@@ -756,7 +761,7 @@ function BottomBar({
         </div>
       )}
       {table.mainPot.status !== "ESPERANDO_TIRADOR" &&
-        table.mainPot.status !== "PREGUNTAR_TIRADOR" &&
+        !shouldAskShooter &&
         !mainPotCopado && (
         <div className="casino-action-box wide">
           <small>Copar pozo por KULO</small>
@@ -855,6 +860,8 @@ function PlayPlatformCasinoExperience() {
     dice,
     history,
   } = gameState;
+  const remoteRolling =
+    table.phase === "ROLLING_DICE";
   const currentPlayerId =
     isLivePlayer ? urlPlayerId : selectedQuickBetPlayer;
   const accountPlayer =
@@ -1053,6 +1060,21 @@ function PlayPlatformCasinoExperience() {
   }, []);
 
   useEffect(() => {
+    if (!remoteRolling || isRolling) {
+      return undefined;
+    }
+
+    rollIntervalRef.current = setInterval(() => {
+      setRollingDice([
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+      ]);
+    }, 70);
+
+    return () => clearInterval(rollIntervalRef.current);
+  }, [isRolling, remoteRolling]);
+
+  useEffect(() => {
     if (quickBetPhase === "READY" || isRolling) {
       return undefined;
     }
@@ -1097,6 +1119,20 @@ function PlayPlatformCasinoExperience() {
     }
 
     updateState(runtime.closeQuickBetting());
+    const rollingState = runtime.getState();
+    updateState({
+      ...rollingState,
+      table: {
+        ...rollingState.table,
+        phase: "ROLLING_DICE",
+      },
+      dice: {
+        values: [],
+        total: null,
+        outcome: null,
+        finished: false,
+      },
+    });
     const nextState =
       runtime.rollDice();
     setIsRolling(true);
@@ -1236,7 +1272,7 @@ function PlayPlatformCasinoExperience() {
           </div>
         </header>
 
-        {tableId && liveTableStatus && (
+        {tableId && liveTableStatus && liveTableStatus !== "Mesa real lista" && (
           <div className="casino-live-table-notice">
             {liveTableStatus}
           </div>
@@ -1260,7 +1296,7 @@ function PlayPlatformCasinoExperience() {
               players={players}
               dice={dice}
               rollingDice={rollingDice}
-              isRolling={isRolling}
+              isRolling={isRolling || remoteRolling}
               selectedShooter={selectedShooter}
               mainPotAmount={mainPotAmount}
               coverAmount={coverAmount}
@@ -1270,11 +1306,12 @@ function PlayPlatformCasinoExperience() {
               onCoverMainPot={coverMainPot}
               onPassMainPotCoverage={passMainPotCoverage}
               onSelectCoverAmount={setCoverAmount}
+              currentPlayerId={currentPlayerId}
             />
             <BottomBar
               table={table}
               players={players}
-              isRolling={isRolling}
+              isRolling={isRolling || remoteRolling}
               selectedBet={selectedBet}
               selectedAmount={selectedAmount}
               currentPlayerId={currentPlayerId}
