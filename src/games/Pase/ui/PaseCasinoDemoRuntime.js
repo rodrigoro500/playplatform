@@ -256,6 +256,11 @@ class PaseCasinoDemoRuntime {
   hydrateState(state) {
     if (state) {
       this.state = state;
+      if (state.table?.point) {
+        this.resolver.setPoint(state.table.point);
+      } else {
+        this.resolver.clearPoint();
+      }
     }
 
     return this.getState();

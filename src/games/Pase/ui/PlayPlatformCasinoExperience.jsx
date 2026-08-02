@@ -703,7 +703,7 @@ function BottomBar({
     mainPotCopado &&
     quickBetPhase === "READY" &&
     !isRolling &&
-    (!isLivePlayer || currentPlayerId === table.shooterId);
+    currentPlayerId === table.shooterId;
   const rollLabel =
     isRolling ? "Girando..." :
       quickBetPhase === "BETTING" ? `Apuestas ${quickBetSeconds}s` :
@@ -1113,7 +1113,7 @@ function PlayPlatformCasinoExperience() {
       isRolling ||
       quickBetPhase !== "READY" ||
       table.mainPot.status !== "COPADO" ||
-      (isLivePlayer && currentPlayerId !== table.shooterId)
+      currentPlayerId !== table.shooterId
     ) {
       return;
     }
