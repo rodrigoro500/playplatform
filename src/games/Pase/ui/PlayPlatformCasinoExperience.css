@@ -1705,7 +1705,15 @@
   }
 
   .casino-player-card.is-available {
-    min-width: 104px;
+    min-width: 0;
+    width: 42px;
+    justify-content: center;
+    padding: 4px;
+  }
+
+  .casino-player-card.is-available .casino-player-name,
+  .casino-player-card.is-available .casino-player-money {
+    display: none;
   }
 
   .casino-player-avatar {

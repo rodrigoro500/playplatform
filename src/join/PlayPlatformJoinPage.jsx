@@ -24,8 +24,10 @@ function PlayPlatformJoinPage() {
   const [message, setMessage] = useState("");
   const canSubmit =
     displayName.trim().length >= 2 && invite?.status === "pending";
+  const invitePlayerId =
+    invite?.table_players?.[0]?.id ?? playerId;
   const tableLink =
-    invite?.table_id ? `/?table=${invite.table_id}${playerId ? `&player=${playerId}` : ""}` : "/";
+    invite?.table_id ? `/?table=${invite.table_id}${invitePlayerId ? `&player=${invitePlayerId}` : ""}` : "/";
 
   useEffect(() => {
     async function loadInvite() {
@@ -38,6 +40,14 @@ function PlayPlatformJoinPage() {
         const nextInvite =
           await findInvite(inviteCode);
         setInvite(nextInvite);
+        const existingPlayerId =
+          nextInvite?.table_players?.[0]?.id ?? "";
+        if (existingPlayerId) {
+          setPlayerId(existingPlayerId);
+          if (savedPlayerStorageKey) {
+            window.localStorage.setItem(savedPlayerStorageKey, existingPlayerId);
+          }
+        }
       } catch (error) {
         setMessage(`No se pudo encontrar la invitacion: ${error.message}`);
       } finally {

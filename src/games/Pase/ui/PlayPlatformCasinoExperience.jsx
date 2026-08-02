@@ -605,7 +605,6 @@ function BottomBar({
   isRolling,
   selectedBet,
   selectedAmount,
-  selectedQuickBetPlayer,
   currentPlayerId,
   isLivePlayer,
   mainPotAmount,
@@ -613,16 +612,13 @@ function BottomBar({
   quickBetPhase,
   quickBetSeconds,
   onSelectBet,
-  onSelectQuickBetPlayer,
   onSelectMainPotAmount,
   onSetShooterStake,
   onSelectCoverAmount,
   onCoverMainPot,
   onPassMainPotCoverage,
   onConfirmBet,
-  onStart,
   onRoll,
-  onNextRound,
 }) {
   const currentPlayer =
     players.find((player) => player.id === currentPlayerId) ?? null;
@@ -637,10 +633,9 @@ function BottomBar({
   const coverAmountValue = Number(coverAmount) || 0;
   const quickBetOpen = quickBetPhase === "BETTING";
   const mainPotCopado = table.mainPot.status === "COPADO";
-  const hasSelectedPlayer = Boolean(selectedQuickBetPlayer);
   const canConfirmQuickBet =
     quickBetOpen &&
-    hasSelectedPlayer &&
+    Boolean(currentPlayer) &&
     selectedAmountValue >= 1000 &&
     selectedAmountValue <= (currentPlayer?.wallet ?? 0);
   const canSetShooterStake =
@@ -744,23 +739,6 @@ function BottomBar({
           )}
         </div>
       )}
-      <label className="casino-player-selector">
-        <span>Jugador</span>
-        <select
-          value={selectedQuickBetPlayer}
-          onChange={(event) => onSelectQuickBetPlayer(event.target.value)}
-          disabled={isLivePlayer || !quickBetOpen || players.length === 0}
-        >
-          {players.length === 0 && (
-            <option value="">Esperando jugadores</option>
-          )}
-          {players.map((player) => (
-            <option key={player.id} value={player.id}>
-              {player.name}
-            </option>
-          ))}
-        </select>
-      </label>
       <div className="casino-bet-selector">
         <button
           type="button"
@@ -786,12 +764,6 @@ function BottomBar({
         disabled={!canConfirmQuickBet}
       >
         Confirmar apuesta
-      </button>
-      <button type="button" onClick={onStart} className="casino-action-button">
-        Iniciar mesa
-      </button>
-      <button type="button" onClick={onNextRound} className="casino-action-button">
-        Nueva ronda
       </button>
       <button
         type="button"
@@ -1155,7 +1127,6 @@ function PlayPlatformCasinoExperience() {
               isRolling={isRolling}
               selectedBet={selectedBet}
               selectedAmount={selectedAmount}
-              selectedQuickBetPlayer={selectedQuickBetPlayer}
               currentPlayerId={currentPlayerId}
               isLivePlayer={isLivePlayer}
               mainPotAmount={mainPotAmount}
@@ -1163,16 +1134,13 @@ function PlayPlatformCasinoExperience() {
               quickBetPhase={quickBetPhase}
               quickBetSeconds={quickBetSeconds}
               onSelectBet={setSelectedBet}
-              onSelectQuickBetPlayer={setSelectedQuickBetPlayer}
               onSelectMainPotAmount={setMainPotAmount}
               onSetShooterStake={setShooterStake}
               onSelectCoverAmount={setCoverAmount}
               onCoverMainPot={coverMainPot}
               onPassMainPotCoverage={passMainPotCoverage}
               onConfirmBet={confirmQuickBet}
-              onStart={startTableRound}
               onRoll={rollWithAnimation}
-              onNextRound={startNextRound}
             />
           </div>
           <RightPanel table={table} players={players} phase={phase} history={history} />

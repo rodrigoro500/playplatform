@@ -277,6 +277,10 @@ async function findInvite(inviteCode) {
         id,
         name,
         code
+      ),
+      table_players (
+        id,
+        status
       )
     `)
     .eq("invite_code", inviteCode)
