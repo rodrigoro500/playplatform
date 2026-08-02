@@ -126,7 +126,8 @@ function settleExpiredCoverage(players, mainPot) {
 function createEmptyMainPot(
   shooterId,
   sourcePlayers = initialPlayers,
-  status = "ESPERANDO_TIRADOR"
+  status = "ESPERANDO_TIRADOR",
+  promptKind = "CONTINUAR"
 ) {
   return {
     suerte: 0,
@@ -145,6 +146,7 @@ function createEmptyMainPot(
     coverageLog: [],
     shooterWinCount: 0,
     status,
+    promptKind,
   };
 }
 
@@ -458,7 +460,7 @@ class PaseCasinoDemoRuntime {
         ...this.state.table,
         phase: requiredCover === 0 ? "WAITING_ROLL" : "WAITING_MAIN_POT",
         mainPot: coverageExpired ?
-          createEmptyMainPot(mainPot.shooterId, this.state.players, "PREGUNTAR_TIRADOR") :
+          createEmptyMainPot(mainPot.shooterId, this.state.players, "PREGUNTAR_TIRADOR", "CONTINUAR") :
           updatedMainPot,
       },
     };
@@ -501,7 +503,7 @@ class PaseCasinoDemoRuntime {
       table: {
         ...this.state.table,
         phase: "WAITING_MAIN_POT",
-        mainPot: coverageExpired ? createEmptyMainPot(mainPot.shooterId, this.state.players, "PREGUNTAR_TIRADOR") : {
+        mainPot: coverageExpired ? createEmptyMainPot(mainPot.shooterId, this.state.players, "PREGUNTAR_TIRADOR", "CONTINUAR") : {
           ...mainPot,
           promptedCoverPlayerId: restartedQueue[0] ?? null,
           coverageQueue: restartedQueue,
@@ -615,7 +617,7 @@ class PaseCasinoDemoRuntime {
         phase: "WAITING_MAIN_POT",
         shooterId: nextShooterId,
         point: null,
-        mainPot: createEmptyMainPot(nextShooterId, this.state.players, "PREGUNTAR_TIRADOR"),
+        mainPot: createEmptyMainPot(nextShooterId, this.state.players, "PREGUNTAR_TIRADOR", "NUEVO_TIRADOR"),
         currentBet: null,
         instantPool: {
           suerte: 0,
@@ -813,7 +815,7 @@ class PaseCasinoDemoRuntime {
         nextPlayers =
           updatePlayerWallet(nextPlayers, mainPotBeforeRoll.shooterId, mainPotBeforeRoll.total);
         mainPot =
-          createEmptyMainPot(mainPotBeforeRoll.shooterId, this.state.players, "PREGUNTAR_TIRADOR");
+          createEmptyMainPot(mainPotBeforeRoll.shooterId, this.state.players, "PREGUNTAR_TIRADOR", "CONTINUAR");
         nextPhase = "WAITING_MAIN_POT";
       } else {
         const coverageQueue =
@@ -843,6 +845,8 @@ class PaseCasinoDemoRuntime {
     }
 
     if (kuloWon) {
+      const nextShooterId =
+        getNextShooterId(this.state.players, mainPotBeforeRoll.shooterId);
       (mainPotBeforeRoll.coverageLog ?? [])
         .filter((item) => item.action === "CUBRIO" && item.amount > 0)
         .forEach((item) => {
@@ -850,8 +854,9 @@ class PaseCasinoDemoRuntime {
             updatePlayerWallet(nextPlayers, item.playerId, item.amount * 2);
         });
       mainPot =
-        createEmptyMainPot(mainPotBeforeRoll.shooterId, this.state.players, "PREGUNTAR_TIRADOR");
+        createEmptyMainPot(nextShooterId, this.state.players, "PREGUNTAR_TIRADOR", "NUEVO_TIRADOR");
       nextPhase = "WAITING_MAIN_POT";
+      this.resolver.clearPoint();
     }
 
     this.state = {
@@ -859,7 +864,8 @@ class PaseCasinoDemoRuntime {
       table: {
         ...this.state.table,
         phase: nextPhase,
-        point,
+        shooterId: kuloWon ? mainPot.shooterId : this.state.table.shooterId,
+        point: kuloWon ? null : point,
         mainPot,
         betFeed: settled.betFeed,
         settlementFeed: settled.settlementFeed,
@@ -868,7 +874,7 @@ class PaseCasinoDemoRuntime {
           (bet) => bet.id === this.state.table.currentBet?.id
         ) ?? this.state.table.currentBet,
       },
-      players: nextPlayers,
+      players: kuloWon ? createPlayers(mainPot.shooterId, nextPlayers) : nextPlayers,
       dice: {
         values: result.dice,
         total: result.total,

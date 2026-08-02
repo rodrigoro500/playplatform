@@ -232,7 +232,9 @@ function LeftPanel({
   onConfirmBet,
 }) {
   const quickAmounts = [1000, 5000, 10000, 50000, 100000];
-  const quickBetOpen = quickBetPhase === "BETTING";
+  const quickBetOpen =
+    quickBetPhase !== "BALANCING" &&
+    table.phase !== "ROLLING_DICE";
 
   return (
     <aside className="casino-panel-stack">
@@ -688,6 +690,8 @@ function BottomBar({
   const mainPotAmountValue = Number(mainPotAmount) || 0;
   const coverAmountValue = Number(coverAmount) || 0;
   const mainPotCopado = table.mainPot.status === "COPADO";
+  const isNewShooterPrompt =
+    table.mainPot.promptKind === "NUEVO_TIRADOR";
   const shouldAskShooter =
     table.mainPot.status === "PREGUNTAR_TIRADOR" ||
     (
@@ -725,12 +729,16 @@ function BottomBar({
     <div className="casino-bottom-bar">
       {shouldAskShooter && (
         <div className="casino-action-box wide">
-          <small>{currentPlayerId === table.shooterId ? "Tu turno" : "Cambio de turno"}</small>
+          <small>
+            {currentPlayerId === table.shooterId ?
+              isNewShooterPrompt ? "Vas a tirar" : "Tu turno" :
+              "Cambio de turno"}
+          </small>
           <strong>{shooter?.name ?? "Sin tirador"}</strong>
           {currentPlayerId === table.shooterId ? (
             <div className="casino-bottom-inline">
               <button type="button" onClick={onAcceptShooterTurn}>
-                Seguir tirando
+                {isNewShooterPrompt ? "Voy a tirar" : "Seguir tirando"}
               </button>
               <button type="button" onClick={onPassShooterTurn}>
                 Pasar turno
@@ -738,7 +746,9 @@ function BottomBar({
             </div>
           ) : (
             <span className="casino-current-bet-side">
-              Esperando si {shooter?.name ?? "el tirador"} quiere volver a tirar
+              {isNewShooterPrompt ?
+                `Esperando si ${shooter?.name ?? "el tirador"} va a tirar` :
+                `Esperando si ${shooter?.name ?? "el tirador"} quiere volver a tirar`}
             </span>
           )}
         </div>
@@ -876,8 +886,8 @@ function PlayPlatformCasinoExperience() {
   const selectedAmountValue =
     Number(selectedAmount) || 0;
   const canConfirmQuickBet =
-    quickBetPhase === "BETTING" &&
-    table.mainPot.status === "COPADO" &&
+    quickBetPhase !== "BALANCING" &&
+    table.phase !== "ROLLING_DICE" &&
     Boolean(accountPlayer) &&
     selectedAmountValue >= 1000 &&
     selectedAmountValue <= (accountPlayer?.wallet ?? 0);
@@ -1171,7 +1181,8 @@ function PlayPlatformCasinoExperience() {
     if (
       !currentPlayerId ||
       !player ||
-      quickBetPhase !== "BETTING" ||
+      quickBetPhase === "BALANCING" ||
+      table.phase === "ROLLING_DICE" ||
       quickBetAmount < 1000 ||
       quickBetAmount > player.wallet
     ) {
