@@ -20,6 +20,8 @@ function PlayPlatformJoinPage() {
   const [message, setMessage] = useState("");
   const canSubmit =
     displayName.trim().length >= 2 && requestedAmount >= 1000 && invite?.status === "pending";
+  const tableLink =
+    invite?.table_id ? `/?table=${invite.table_id}` : "/";
 
   useEffect(() => {
     async function loadInvite() {
@@ -77,7 +79,7 @@ function PlayPlatformJoinPage() {
             <span>Ingreso de jugador</span>
             <h1>PlayPlatform</h1>
           </div>
-          <a href="/" className="admin-header-link">
+          <a href={tableLink} className="admin-header-link">
             Ver mesa
           </a>
         </header>
