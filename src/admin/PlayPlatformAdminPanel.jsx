@@ -25,6 +25,10 @@ function createWhatsappLink(inviteCode) {
   return `https://wa.me/?text=${encodeURIComponent(message)}`;
 }
 
+function createTableLink(tableId) {
+  return tableId ? `/?table=${tableId}` : "/";
+}
+
 function getStatusLabel(status) {
   const labels = {
     approved: "Aprobado",
@@ -162,7 +166,7 @@ function PlayPlatformAdminPanel() {
             <span>Panel administrativo</span>
             <h1>PlayPlatform</h1>
           </div>
-          <a href="/" className="admin-header-link">
+          <a href={createTableLink(selectedTable?.id)} className="admin-header-link">
             Ir a la mesa
           </a>
         </header>
@@ -252,6 +256,12 @@ function PlayPlatformAdminPanel() {
                 >
                   Crear invitacion
                 </button>
+                <a
+                  href={createTableLink(selectedTable?.id)}
+                  className="admin-header-link"
+                >
+                  Abrir mesa
+                </a>
               </div>
             </div>
 

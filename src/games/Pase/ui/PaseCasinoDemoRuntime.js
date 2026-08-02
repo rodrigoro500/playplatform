@@ -22,8 +22,8 @@ function normalizeWinner(winner) {
   return winner;
 }
 
-function createCoverageQueue(shooterId) {
-  return initialPlayers
+function createCoverageQueue(shooterId, sourcePlayers = initialPlayers) {
+  return sourcePlayers
     .filter((player) => player.id !== shooterId)
     .map((player) => player.id);
 }
@@ -38,14 +38,17 @@ function createPlayers(activeShooterId = "P1", sourcePlayers = initialPlayers) {
   }));
 }
 
-function createInitialState() {
-  const shooterId = "P1";
+function createInitialState(sourcePlayers = initialPlayers, tableInfo = {}) {
+  const shooterId = sourcePlayers[0]?.id ?? null;
 
   return {
     table: {
       running: false,
       phase: "WAITING_TABLE",
-      round: 1024,
+      round: tableInfo.round ?? 1024,
+      tableId: tableInfo.id ?? null,
+      tableName: tableInfo.name ?? "Pase VIP",
+      tableCode: tableInfo.code ?? "#1024",
       shooterId,
       point: null,
       mainPot: {
@@ -59,7 +62,7 @@ function createInitialState() {
         coverPlayerId: null,
         requiredCover: 0,
         promptedCoverPlayerId: null,
-        coverageQueue: createCoverageQueue(shooterId),
+        coverageQueue: createCoverageQueue(shooterId, sourcePlayers),
         declinedCoverPlayerIds: [],
         coverageLog: [],
         shooterWinCount: 0,
@@ -74,7 +77,7 @@ function createInitialState() {
       betFeed: [],
       settlementFeed: [],
     },
-    players: createPlayers(shooterId),
+    players: createPlayers(shooterId, sourcePlayers),
     dice: {
       values: [],
       total: null,
@@ -99,7 +102,7 @@ function updatePlayerWallet(players, playerId, amount) {
   );
 }
 
-function createEmptyMainPot(shooterId) {
+function createEmptyMainPot(shooterId, sourcePlayers = initialPlayers) {
   return {
     suerte: 0,
     kulo: 0,
@@ -111,7 +114,7 @@ function createEmptyMainPot(shooterId) {
     coverPlayerId: null,
     requiredCover: 0,
     promptedCoverPlayerId: null,
-    coverageQueue: createCoverageQueue(shooterId),
+    coverageQueue: createCoverageQueue(shooterId, sourcePlayers),
     declinedCoverPlayerIds: [],
     coverageLog: [],
     shooterWinCount: 0,
@@ -198,10 +201,13 @@ function balanceInstantBets({
 }
 
 class PaseCasinoDemoRuntime {
-  constructor() {
+  constructor({
+    players = initialPlayers,
+    table = {},
+  } = {}) {
     this.diceEngine = new PaseDiceEngine();
     this.resolver = new PaseResolver();
-    this.state = createInitialState();
+    this.state = createInitialState(players, table);
   }
 
   getState() {
@@ -239,6 +245,10 @@ class PaseCasinoDemoRuntime {
   }
 
   selectShooter(playerId) {
+    if (!playerId) {
+      return this.getState();
+    }
+
     const currentStake =
       this.state.table.mainPot.shooterStake;
     const mainPot = {
@@ -265,8 +275,13 @@ class PaseCasinoDemoRuntime {
       Math.max(20000, Number(amount) || 0);
     const shooterId =
       this.state.table.shooterId;
+
+    if (!shooterId) {
+      return this.getState();
+    }
+
     const coverageQueue =
-      createCoverageQueue(shooterId);
+      createCoverageQueue(shooterId, this.state.players);
     const mainPot = {
       ...this.state.table.mainPot,
       suerte: shooterAmount,
@@ -428,7 +443,7 @@ class PaseCasinoDemoRuntime {
     const requiredCover =
       shooterAmount;
     const coverageQueue =
-      createCoverageQueue(this.state.table.shooterId);
+      createCoverageQueue(this.state.table.shooterId, this.state.players);
 
     this.state = {
       ...this.state,
@@ -463,6 +478,10 @@ class PaseCasinoDemoRuntime {
     selection = "SUERTE",
     amount = 50000,
   } = {}) {
+    if (!playerId) {
+      return this.getState();
+    }
+
     const betAmount =
       Math.max(1000, Number(amount) || 0);
 
@@ -617,10 +636,10 @@ class PaseCasinoDemoRuntime {
         nextPlayers =
           updatePlayerWallet(nextPlayers, mainPotBeforeRoll.shooterId, mainPotBeforeRoll.total);
         mainPot =
-          createEmptyMainPot(mainPotBeforeRoll.shooterId);
+          createEmptyMainPot(mainPotBeforeRoll.shooterId, this.state.players);
       } else {
         const coverageQueue =
-          createCoverageQueue(mainPotBeforeRoll.shooterId);
+          createCoverageQueue(mainPotBeforeRoll.shooterId, this.state.players);
         const shooterAmount =
           Math.max(mainPotBeforeRoll.total, mainPotBeforeRoll.suerte);
 
@@ -653,7 +672,7 @@ class PaseCasinoDemoRuntime {
             updatePlayerWallet(nextPlayers, item.playerId, item.amount * 2);
         });
       mainPot =
-        createEmptyMainPot(mainPotBeforeRoll.shooterId);
+        createEmptyMainPot(mainPotBeforeRoll.shooterId, this.state.players);
     }
 
     this.state = {

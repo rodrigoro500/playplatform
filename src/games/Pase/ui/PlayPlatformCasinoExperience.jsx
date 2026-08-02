@@ -7,6 +7,10 @@ import {
 import PaseCasinoDemoRuntime, {
   formatMoney,
 } from "./PaseCasinoDemoRuntime";
+import {
+  fetchTableById,
+  hasSupabaseConfig,
+} from "../../../lib/playPlatformDataService";
 import "./PlayPlatformCasinoExperience.css";
 
 const phaseLabels = {
@@ -37,6 +41,18 @@ const chatMessages = [
   ["Carlos89", "Buena suerte a todos.", "14:21"],
   ["RRVisionHD", "Hoy se gana.", "14:22"],
 ];
+
+function getTableIdFromUrl() {
+  return new URLSearchParams(window.location.search).get("table");
+}
+
+function mapLivePlayerToRuntimePlayer(player) {
+  return {
+    id: player.id,
+    name: player.name,
+    wallet: player.chips,
+  };
+}
 
 function Die({
   value,
@@ -468,8 +484,11 @@ function GameTable({
           quickBet={latestBets.get(player.id)}
         />
       ))}
-      <AvailableSeat index={6} />
-      <AvailableSeat index={7} />
+      {Array.from({
+        length: Math.max(0, 8 - players.length),
+      }, (_, offset) => (
+        <AvailableSeat key={`available-${offset}`} index={players.length + offset} />
+      ))}
     </div>
   );
 }
@@ -496,7 +515,7 @@ function MainPotTablePrompt({
   const promptedPlayer = players.find(
     (player) => player.id === mainPot.promptedCoverPlayerId
   );
-  const canSetShooterStake = mainPotAmount >= 20000;
+  const canSetShooterStake = Boolean(selectedShooter) && mainPotAmount >= 20000;
   const canCover = Boolean(promptedPlayer && mainPot.requiredCover > 0);
 
   return (
@@ -512,7 +531,11 @@ function MainPotTablePrompt({
             <select
               value={selectedShooter}
               onChange={(event) => onSelectShooter(event.target.value)}
+              disabled={players.length === 0}
             >
+              {players.length === 0 && (
+                <option value="">Esperando jugadores</option>
+              )}
               {players.map((player) => (
                 <option key={player.id} value={player.id}>
                   {player.name}
@@ -606,7 +629,8 @@ function BottomBar({
   const selectedAmountValue = Number(selectedAmount) || 0;
   const quickBetOpen = quickBetPhase === "BETTING";
   const mainPotCopado = table.mainPot.status === "COPADO";
-  const canConfirmQuickBet = quickBetOpen && selectedAmountValue >= 1000;
+  const hasSelectedPlayer = Boolean(selectedQuickBetPlayer);
+  const canConfirmQuickBet = quickBetOpen && hasSelectedPlayer && selectedAmountValue >= 1000;
   const canRollDice = mainPotCopado && quickBetPhase === "READY" && !isRolling;
   const rollLabel =
     isRolling ? "Girando..." :
@@ -646,8 +670,11 @@ function BottomBar({
         <select
           value={selectedQuickBetPlayer}
           onChange={(event) => onSelectQuickBetPlayer(event.target.value)}
-          disabled={!quickBetOpen}
+          disabled={!quickBetOpen || players.length === 0}
         >
+          {players.length === 0 && (
+            <option value="">Esperando jugadores</option>
+          )}
           {players.map((player) => (
             <option key={player.id} value={player.id}>
               {player.name}
@@ -700,17 +727,26 @@ function BottomBar({
 }
 
 function PlayPlatformCasinoExperience() {
-  const runtime = useMemo(() => new PaseCasinoDemoRuntime(), []);
+  const tableId = useMemo(() => getTableIdFromUrl(), []);
+  const runtimeRef = useRef(null);
+  if (runtimeRef.current === null) {
+    runtimeRef.current = new PaseCasinoDemoRuntime({
+      players: tableId ? [] : undefined,
+    });
+  }
+  const runtime = runtimeRef.current;
   const rollTimerRef = useRef(null);
   const rollIntervalRef = useRef(null);
   const [gameState, setGameState] = useState(runtime.getState());
+  const [liveTable, setLiveTable] = useState(null);
+  const [liveTableStatus, setLiveTableStatus] = useState(tableId ? "Cargando mesa..." : "");
   const [isRolling, setIsRolling] = useState(false);
   const [rollingDice, setRollingDice] = useState([1, 1]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedBet, setSelectedBet] = useState("SUERTE");
   const [selectedAmount, setSelectedAmount] = useState(1000);
-  const [selectedQuickBetPlayer, setSelectedQuickBetPlayer] = useState("P3");
-  const [selectedShooter, setSelectedShooter] = useState("P1");
+  const [selectedQuickBetPlayer, setSelectedQuickBetPlayer] = useState(tableId ? "" : "P3");
+  const [selectedShooter, setSelectedShooter] = useState(tableId ? "" : "P1");
   const [mainPotAmount, setMainPotAmount] = useState(100000);
   const [coverAmount, setCoverAmount] = useState(100000);
   const [quickBetPhase, setQuickBetPhase] = useState("BETTING");
@@ -722,13 +758,91 @@ function PlayPlatformCasinoExperience() {
     history,
   } = gameState;
   const accountPlayer =
-    players.find((player) => player.id === "P3");
+    players.find((player) => player.id === selectedQuickBetPlayer) ?? players[0] ?? null;
   const phase = phaseLabels[table.phase] ?? table.phase;
   const updateState = (nextState) => setGameState({ ...nextState });
   const resetQuickBetWindow = () => {
     setQuickBetPhase("BETTING");
     setQuickBetSeconds(20);
   };
+
+  useEffect(() => {
+    if (!tableId) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadLiveTable = async () => {
+      if (!hasSupabaseConfig) {
+        setLiveTableStatus("Falta configurar Supabase.");
+        return;
+      }
+
+      try {
+        setLiveTableStatus("Cargando mesa...");
+        const nextLiveTable =
+          await fetchTableById(tableId);
+        const approvedPlayers =
+          (nextLiveTable?.players ?? [])
+            .filter((player) => player.status === "approved" || player.status === "seated")
+            .sort((left, right) => (left.seatNumber ?? 99) - (right.seatNumber ?? 99));
+        const runtimePlayers =
+          approvedPlayers.map(mapLivePlayerToRuntimePlayer);
+        const firstPlayerId =
+          runtimePlayers[0]?.id ?? "";
+
+        if (!isMounted) {
+          return;
+        }
+
+        const currentState =
+          runtimeRef.current.getState();
+        const currentPlayerIds =
+          currentState.players.map((player) => player.id).join("|");
+        const nextPlayerIds =
+          runtimePlayers.map((player) => player.id).join("|");
+        const shouldResetRuntime =
+          !currentState.table.running && currentPlayerIds !== nextPlayerIds;
+
+        if (shouldResetRuntime) {
+          runtimeRef.current = new PaseCasinoDemoRuntime({
+            players: runtimePlayers,
+            table: {
+              id: nextLiveTable.id,
+              name: nextLiveTable.name,
+              code: nextLiveTable.code,
+            },
+          });
+        }
+
+        setLiveTable(nextLiveTable);
+        if (shouldResetRuntime) {
+          setSelectedShooter(firstPlayerId);
+          setSelectedQuickBetPlayer(firstPlayerId);
+          setGameState({ ...runtimeRef.current.getState() });
+        }
+        setLiveTableStatus(
+          runtimePlayers.length > 0 ?
+            "Mesa real lista" :
+            "Mesa libre: esperando jugadores aprobados"
+        );
+      } catch (error) {
+        if (isMounted) {
+          setLiveTableStatus(`No se pudo cargar la mesa: ${error.message}`);
+        }
+      }
+    };
+
+    loadLiveTable();
+    const refreshTimerId =
+      window.setInterval(loadLiveTable, 8000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(refreshTimerId);
+    };
+  }, [tableId]);
 
   useEffect(() => {
     const syncFullscreen = () => {
@@ -815,7 +929,7 @@ function PlayPlatformCasinoExperience() {
     const quickBetAmount =
       Number(selectedAmount) || 0;
 
-    if (quickBetPhase !== "BETTING" || quickBetAmount < 1000) {
+    if (!selectedQuickBetPlayer || quickBetPhase !== "BETTING" || quickBetAmount < 1000) {
       return;
     }
 
@@ -827,6 +941,10 @@ function PlayPlatformCasinoExperience() {
   };
 
   const startTableRound = () => {
+    if (players.length === 0) {
+      return;
+    }
+
     resetQuickBetWindow();
     updateState(runtime.startTable());
   };
@@ -837,12 +955,20 @@ function PlayPlatformCasinoExperience() {
   };
 
   const selectShooter = (playerId) => {
+    if (!playerId) {
+      return;
+    }
+
     setSelectedShooter(playerId);
 
     updateState(runtime.selectShooter(playerId));
   };
 
   const setShooterStake = () => {
+    if (!selectedShooter) {
+      return;
+    }
+
     const amount = Math.max(20000, mainPotAmount);
     setMainPotAmount(amount);
     setCoverAmount(amount);
@@ -878,7 +1004,7 @@ function PlayPlatformCasinoExperience() {
           </div>
           <div className="casino-table-status">
             <span className="casino-status-dot" />
-            Mesa: Pase VIP #{table.round}
+            Mesa: {liveTable?.name ?? table.tableName ?? `Pase VIP #${table.round}`}
             <span style={{ color: "#34d399" }}>{table.running ? "En curso" : "Lista"}</span>
           </div>
           <div className="casino-header-actions">
@@ -896,6 +1022,12 @@ function PlayPlatformCasinoExperience() {
             </div>
           </div>
         </header>
+
+        {tableId && liveTableStatus && (
+          <div className="casino-live-table-notice">
+            {liveTableStatus}
+          </div>
+        )}
 
         <section className="casino-layout">
           <LeftPanel

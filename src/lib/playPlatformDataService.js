@@ -83,6 +83,50 @@ async function fetchTables() {
   return (data ?? []).map(mapTable);
 }
 
+async function fetchTableById(tableId) {
+  if (!hasSupabaseConfig || !tableId) {
+    return null;
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("play_tables")
+    .select(`
+      id,
+      code,
+      name,
+      status,
+      min_main_pot,
+      table_players (
+        id,
+        display_name,
+        seat_number,
+        status,
+        muted,
+        mic_enabled,
+        wallets (
+          balance
+        )
+      ),
+      table_invites (
+        id,
+        invite_code,
+        status,
+        created_at
+      )
+    `)
+    .eq("id", tableId)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapTable(data);
+}
+
 async function createTable(name) {
   const tableCode =
     createTableCode();
@@ -295,6 +339,7 @@ export {
   createInvite,
   createInviteCode,
   createTable,
+  fetchTableById,
   fetchTables,
   findInvite,
   hasSupabaseConfig,
