@@ -497,7 +497,7 @@ function GameTable({
   const latestBets = new Map();
 
   (table.betFeed ?? []).forEach((bet) => {
-    if (bet.amount > 0 && !latestBets.has(bet.playerId)) {
+    if (bet.status === "CONFIRMADA" && bet.amount > 0 && !latestBets.has(bet.playerId)) {
       latestBets.set(bet.playerId, bet);
     }
   });
@@ -661,8 +661,6 @@ function BottomBar({
   table,
   players,
   isRolling,
-  selectedBet,
-  selectedAmount,
   currentPlayerId,
   isLivePlayer,
   mainPotAmount,
@@ -684,9 +682,6 @@ function BottomBar({
     players.find((player) => player.id === table.shooterId) ?? null;
   const promptedPlayer =
     players.find((player) => player.id === table.mainPot.promptedCoverPlayerId) ?? null;
-  const currentBet =
-    table.betFeed.find((bet) => bet.playerId === currentPlayerId) ?? table.currentBet;
-  const selectedAmountValue = Number(selectedAmount) || 0;
   const mainPotAmountValue = Number(mainPotAmount) || 0;
   const coverAmountValue = Number(coverAmount) || 0;
   const mainPotCopado = table.mainPot.status === "COPADO";
@@ -721,10 +716,6 @@ function BottomBar({
         quickBetPhase === "BALANCING" ? `Ajustando ${quickBetSeconds}s` :
           !mainPotCopado ? "Falta copar pozo" :
             table.running ? "Lanzar dados" : "Confirmar apuesta";
-  const currentBetSettled =
-    currentBet?.status === "GANADA" ||
-    currentBet?.status === "PERDIDA";
-
   return (
     <div className="casino-bottom-bar">
       {shouldAskShooter && (
@@ -803,29 +794,6 @@ function BottomBar({
           ) : (
             <span className="casino-current-bet-side">
               Esperando respuesta de {promptedPlayer?.name ?? "otro jugador"}
-            </span>
-          )}
-        </div>
-      )}
-      {mainPotCopado && (
-        <div className="casino-action-box">
-          <small>Tu apuesta actual</small>
-          <strong>
-            {formatMoney(currentBet?.amount ?? selectedAmountValue)} Gs
-          </strong>
-          <span className="casino-current-bet-side">
-            {currentBet ? currentBet.selection : selectedBet}
-          </span>
-          {currentBetSettled && (
-            <span className={`casino-current-bet-result ${currentBet.status === "GANADA" ? "is-win" : "is-loss"}`}>
-              {currentBet.status}
-              {currentBet.status === "GANADA" &&
-                ` +${formatMoney(currentBet.profit)} Gs`}
-            </span>
-          )}
-          {currentBet?.refundedAmount > 0 && (
-            <span className="casino-current-bet-result is-refund">
-              Devuelto {formatMoney(currentBet.refundedAmount)} Gs
             </span>
           )}
         </div>
@@ -1334,8 +1302,6 @@ function PlayPlatformCasinoExperience() {
               table={table}
               players={players}
               isRolling={isRolling || remoteRolling}
-              selectedBet={selectedBet}
-              selectedAmount={selectedAmount}
               currentPlayerId={currentPlayerId}
               isLivePlayer={isLivePlayer}
               mainPotAmount={mainPotAmount}
