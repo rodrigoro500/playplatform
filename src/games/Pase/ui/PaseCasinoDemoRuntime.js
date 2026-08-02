@@ -770,23 +770,30 @@ class PaseCasinoDemoRuntime {
       return this.getState();
     }
 
+    const pointBeforeRoll =
+      this.resolver.getPoint();
+    const mainPotBeforeRoll =
+      this.state.table.mainPot;
     const result = this.diceEngine.rollDice();
     const resolution = this.resolver.resolve(result);
     const outcome = normalizeWinner(resolution.winner);
     const point = resolution.point ?? this.resolver.getPoint();
     const round = this.state.table.round;
+    const isFirstShooterSuerte =
+      !pointBeforeRoll &&
+      outcome === "SUERTE" &&
+      resolution.finished &&
+      (mainPotBeforeRoll.shooterWinCount ?? 0) === 0;
     const historyItem = {
       id: crypto.randomUUID(),
       round,
       dice: `${result.dice[0]} + ${result.dice[1]}`,
       total: result.total,
-      result: outcome ?? "PUNTO",
+      result: isFirstShooterSuerte ? "PRIMERA SUERTE" : outcome ?? "PUNTO",
       point,
     };
     const settled =
       this.settleQuickBets(outcome);
-    const mainPotBeforeRoll =
-      this.state.table.mainPot;
     const shooterWon =
       outcome === "SUERTE" && resolution.finished;
     const kuloWon =

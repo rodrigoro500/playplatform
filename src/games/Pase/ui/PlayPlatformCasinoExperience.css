@@ -2,6 +2,7 @@
   height: 100vh;
   min-height: 640px;
   width: 100%;
+  overflow-anchor: none;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 130px),
@@ -27,6 +28,7 @@
   height: 100%;
   min-height: 0;
   flex-direction: column;
+  overflow-anchor: none;
 }
 
 .casino-header {
@@ -163,6 +165,7 @@
   grid-template-columns: 272px minmax(660px, 1fr) 272px;
   gap: 10px;
   padding: 10px;
+  overflow-anchor: none;
   overflow: hidden;
 }
 
@@ -1577,6 +1580,10 @@
 
 .casino-badge.bad {
   color: #f87171;
+}
+
+.casino-badge.point {
+  color: #60a5fa;
 }
 
 @media (max-width: 1180px) {

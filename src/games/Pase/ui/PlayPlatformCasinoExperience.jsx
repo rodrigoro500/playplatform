@@ -370,7 +370,14 @@ function ChatPanel() {
 function HistoryRow({
   item,
 }) {
-  const good = item.result === "PASE" || item.result === "SUERTE";
+  const badgeKind =
+    item.result === "PUNTO" ?
+      "point" :
+      item.result === "PASE" ||
+      item.result === "SUERTE" ||
+      item.result === "PRIMERA SUERTE" ?
+        "good" :
+        "bad";
 
   return (
     <div className="casino-history-row">
@@ -378,7 +385,7 @@ function HistoryRow({
         #{String(item.round).padStart(4, "0")}
       </span>
       <strong>{item.dice} = {item.total}</strong>
-      <span className={`casino-badge ${good ? "good" : "bad"}`}>
+      <span className={`casino-badge ${badgeKind}`}>
         {item.result}
       </span>
     </div>
@@ -919,7 +926,6 @@ function PlayPlatformCasinoExperience() {
       }
 
       try {
-        setLiveTableStatus("Cargando mesa...");
         const nextLiveTable =
           await fetchTableById(tableId);
         const approvedPlayers =
@@ -1037,7 +1043,7 @@ function PlayPlatformCasinoExperience() {
 
     syncSnapshot();
     const snapshotTimerId =
-      window.setInterval(syncSnapshot, 2000);
+      window.setInterval(syncSnapshot, 700);
 
     return () => {
       isMounted = false;
@@ -1153,7 +1159,7 @@ function PlayPlatformCasinoExperience() {
         resetQuickBetWindow();
       }
       setIsRolling(false);
-    }, 1800);
+    }, 3000);
   };
 
   const confirmQuickBet = () => {
