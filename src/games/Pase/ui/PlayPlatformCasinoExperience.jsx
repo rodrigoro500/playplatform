@@ -891,6 +891,9 @@ function PlayPlatformCasinoExperience() {
     Boolean(accountPlayer) &&
     selectedAmountValue >= 1000 &&
     selectedAmountValue <= (accountPlayer?.wallet ?? 0);
+  const canControlQuickBetWindow =
+    !isLivePlayer ||
+    currentPlayerId === table.shooterId;
   const phase = phaseLabels[table.phase] ?? table.phase;
   const updateState = (nextState, {
     persist = true,
@@ -1102,7 +1105,9 @@ function PlayPlatformCasinoExperience() {
         }
 
         if (quickBetPhase === "BETTING") {
-          updateState(runtime.closeQuickBetting());
+          if (canControlQuickBetWindow) {
+            updateState(runtime.closeQuickBetting());
+          }
           setQuickBetPhase("BALANCING");
           return 5;
         }
@@ -1113,7 +1118,7 @@ function PlayPlatformCasinoExperience() {
     }, 1000);
 
     return () => window.clearTimeout(timerId);
-  }, [isRolling, quickBetPhase, quickBetSeconds, runtime]);
+  }, [canControlQuickBetWindow, isRolling, quickBetPhase, quickBetSeconds, runtime]);
 
   const toggleFullscreen = async () => {
     if (document.fullscreenElement) {

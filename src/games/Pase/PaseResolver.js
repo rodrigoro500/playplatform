@@ -47,7 +47,7 @@ class PaseResolver {
   }
 
   resolvePointRoll(total) {
-    if (this.rules.isPointWin(total, this.point)) {
+    if (this.rules.isInitialSuerteWin(total)) {
       const point = this.point;
 
       this.clearPoint();
@@ -59,7 +59,7 @@ class PaseResolver {
       };
     }
 
-    if (this.rules.isSevenOut(total)) {
+    if (this.rules.isInitialMalaWin(total)) {
       const point = this.point;
 
       this.clearPoint();
@@ -67,6 +67,18 @@ class PaseResolver {
       return {
         finished: true,
         winner: "MALA",
+        point,
+      };
+    }
+
+    if (this.rules.isPointWin(total, this.point)) {
+      const point = this.point;
+
+      this.clearPoint();
+
+      return {
+        finished: true,
+        winner: "SUERTE",
         point,
       };
     }
