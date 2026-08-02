@@ -46,6 +46,10 @@ function getTableIdFromUrl() {
   return new URLSearchParams(window.location.search).get("table");
 }
 
+function getPlayerIdFromUrl() {
+  return new URLSearchParams(window.location.search).get("player");
+}
+
 function mapLivePlayerToRuntimePlayer(player) {
   return {
     id: player.id,
@@ -461,20 +465,6 @@ function GameTable({
           </div>
         </div>
       </div>
-      <MainPotTablePrompt
-        table={table}
-        players={players}
-        playerNames={playerNames}
-        selectedShooter={selectedShooter}
-        mainPotAmount={mainPotAmount}
-        coverAmount={coverAmount}
-        onSelectShooter={onSelectShooter}
-        onSelectMainPotAmount={onSelectMainPotAmount}
-        onSetShooterStake={onSetShooterStake}
-        onCoverMainPot={onCoverMainPot}
-        onPassMainPotCoverage={onPassMainPotCoverage}
-        onSelectCoverAmount={onSelectCoverAmount}
-      />
       {players.map((player, index) => (
         <PlayerBadge
           key={player.id}
@@ -616,22 +606,57 @@ function BottomBar({
   selectedBet,
   selectedAmount,
   selectedQuickBetPlayer,
+  currentPlayerId,
+  isLivePlayer,
+  mainPotAmount,
+  coverAmount,
   quickBetPhase,
   quickBetSeconds,
   onSelectBet,
   onSelectQuickBetPlayer,
+  onSelectMainPotAmount,
+  onSetShooterStake,
+  onSelectCoverAmount,
+  onCoverMainPot,
+  onPassMainPotCoverage,
   onConfirmBet,
   onStart,
   onRoll,
   onNextRound,
 }) {
-  const currentBet = table.currentBet;
+  const currentPlayer =
+    players.find((player) => player.id === currentPlayerId) ?? null;
+  const shooter =
+    players.find((player) => player.id === table.shooterId) ?? null;
+  const promptedPlayer =
+    players.find((player) => player.id === table.mainPot.promptedCoverPlayerId) ?? null;
+  const currentBet =
+    table.betFeed.find((bet) => bet.playerId === currentPlayerId) ?? table.currentBet;
   const selectedAmountValue = Number(selectedAmount) || 0;
+  const mainPotAmountValue = Number(mainPotAmount) || 0;
+  const coverAmountValue = Number(coverAmount) || 0;
   const quickBetOpen = quickBetPhase === "BETTING";
   const mainPotCopado = table.mainPot.status === "COPADO";
   const hasSelectedPlayer = Boolean(selectedQuickBetPlayer);
-  const canConfirmQuickBet = quickBetOpen && hasSelectedPlayer && selectedAmountValue >= 1000;
-  const canRollDice = mainPotCopado && quickBetPhase === "READY" && !isRolling;
+  const canConfirmQuickBet =
+    quickBetOpen &&
+    hasSelectedPlayer &&
+    selectedAmountValue >= 1000 &&
+    selectedAmountValue <= (currentPlayer?.wallet ?? 0);
+  const canSetShooterStake =
+    currentPlayerId === table.shooterId &&
+    mainPotAmountValue >= 20000 &&
+    mainPotAmountValue <= (currentPlayer?.wallet ?? 0);
+  const canCoverMainPot =
+    currentPlayerId === table.mainPot.promptedCoverPlayerId &&
+    coverAmountValue > 0 &&
+    coverAmountValue <= table.mainPot.requiredCover &&
+    coverAmountValue <= (currentPlayer?.wallet ?? 0);
+  const canRollDice =
+    mainPotCopado &&
+    quickBetPhase === "READY" &&
+    !isRolling &&
+    (!isLivePlayer || currentPlayerId === table.shooterId);
   const rollLabel =
     isRolling ? "Girando..." :
       quickBetPhase === "BETTING" ? `Apuestas ${quickBetSeconds}s` :
@@ -644,33 +669,87 @@ function BottomBar({
 
   return (
     <div className="casino-bottom-bar">
-      <div className="casino-action-box">
-        <small>Tu apuesta actual</small>
-        <strong>
-          {formatMoney(currentBet?.amount ?? selectedAmountValue)} Gs
-        </strong>
-        <span className="casino-current-bet-side">
-          {currentBet ? currentBet.selection : selectedBet}
-        </span>
-        {currentBetSettled && (
-          <span className={`casino-current-bet-result ${currentBet.status === "GANADA" ? "is-win" : "is-loss"}`}>
-            {currentBet.status}
-            {currentBet.status === "GANADA" &&
-              ` +${formatMoney(currentBet.profit)} Gs`}
+      {table.mainPot.status === "ESPERANDO_TIRADOR" && (
+        <div className="casino-action-box wide">
+          <small>{currentPlayerId === table.shooterId ? "Eres tirador" : "Pozo del tirador"}</small>
+          <strong>{shooter?.name ?? "Esperando tirador"}</strong>
+          {currentPlayerId === table.shooterId ? (
+            <div className="casino-bottom-inline">
+              <input
+                type="number"
+                min="20000"
+                step="1000"
+                value={mainPotAmount}
+                onChange={(event) => onSelectMainPotAmount(Number(event.target.value))}
+              />
+              <button type="button" onClick={onSetShooterStake} disabled={!canSetShooterStake}>
+                Fijar pozo
+              </button>
+            </div>
+          ) : (
+            <span className="casino-current-bet-side">
+              Esperando que el tirador fije el pozo
+            </span>
+          )}
+        </div>
+      )}
+      {table.mainPot.status !== "ESPERANDO_TIRADOR" && !mainPotCopado && (
+        <div className="casino-action-box wide">
+          <small>Copar pozo por KULO</small>
+          <strong>{promptedPlayer?.name ?? "Buscando cobertura"}</strong>
+          {currentPlayerId === table.mainPot.promptedCoverPlayerId ? (
+            <div className="casino-bottom-inline">
+              <input
+                type="number"
+                min="1"
+                max={table.mainPot.requiredCover}
+                step="1000"
+                value={Math.min(coverAmount, table.mainPot.requiredCover || coverAmount)}
+                onChange={(event) => onSelectCoverAmount(Number(event.target.value))}
+              />
+              <button type="button" onClick={onCoverMainPot} disabled={!canCoverMainPot}>
+                Copar
+              </button>
+              <button type="button" onClick={onPassMainPotCoverage}>
+                Pasar
+              </button>
+            </div>
+          ) : (
+            <span className="casino-current-bet-side">
+              Esperando respuesta de {promptedPlayer?.name ?? "otro jugador"}
+            </span>
+          )}
+        </div>
+      )}
+      {mainPotCopado && (
+        <div className="casino-action-box">
+          <small>Tu apuesta actual</small>
+          <strong>
+            {formatMoney(currentBet?.amount ?? selectedAmountValue)} Gs
+          </strong>
+          <span className="casino-current-bet-side">
+            {currentBet ? currentBet.selection : selectedBet}
           </span>
-        )}
-        {currentBet?.refundedAmount > 0 && (
-          <span className="casino-current-bet-result is-refund">
-            Devuelto {formatMoney(currentBet.refundedAmount)} Gs
-          </span>
-        )}
-      </div>
+          {currentBetSettled && (
+            <span className={`casino-current-bet-result ${currentBet.status === "GANADA" ? "is-win" : "is-loss"}`}>
+              {currentBet.status}
+              {currentBet.status === "GANADA" &&
+                ` +${formatMoney(currentBet.profit)} Gs`}
+            </span>
+          )}
+          {currentBet?.refundedAmount > 0 && (
+            <span className="casino-current-bet-result is-refund">
+              Devuelto {formatMoney(currentBet.refundedAmount)} Gs
+            </span>
+          )}
+        </div>
+      )}
       <label className="casino-player-selector">
         <span>Jugador</span>
         <select
           value={selectedQuickBetPlayer}
           onChange={(event) => onSelectQuickBetPlayer(event.target.value)}
-          disabled={!quickBetOpen || players.length === 0}
+          disabled={isLivePlayer || !quickBetOpen || players.length === 0}
         >
           {players.length === 0 && (
             <option value="">Esperando jugadores</option>
@@ -728,6 +807,8 @@ function BottomBar({
 
 function PlayPlatformCasinoExperience() {
   const tableId = useMemo(() => getTableIdFromUrl(), []);
+  const urlPlayerId = useMemo(() => getPlayerIdFromUrl(), []);
+  const isLivePlayer = Boolean(tableId && urlPlayerId);
   const runtimeRef = useRef(null);
   if (runtimeRef.current === null) {
     runtimeRef.current = new PaseCasinoDemoRuntime({
@@ -757,8 +838,10 @@ function PlayPlatformCasinoExperience() {
     dice,
     history,
   } = gameState;
+  const currentPlayerId =
+    isLivePlayer ? urlPlayerId : selectedQuickBetPlayer;
   const accountPlayer =
-    players.find((player) => player.id === selectedQuickBetPlayer) ?? players[0] ?? null;
+    players.find((player) => player.id === currentPlayerId) ?? players[0] ?? null;
   const phase = phaseLabels[table.phase] ?? table.phase;
   const updateState = (nextState) => setGameState({ ...nextState });
   const resetQuickBetWindow = () => {
@@ -791,6 +874,10 @@ function PlayPlatformCasinoExperience() {
           approvedPlayers.map(mapLivePlayerToRuntimePlayer);
         const firstPlayerId =
           runtimePlayers[0]?.id ?? "";
+        const selectedLivePlayerId =
+          runtimePlayers.some((player) => player.id === urlPlayerId) ?
+            urlPlayerId :
+            firstPlayerId;
 
         if (!isMounted) {
           return;
@@ -798,12 +885,12 @@ function PlayPlatformCasinoExperience() {
 
         const currentState =
           runtimeRef.current.getState();
-        const currentPlayerIds =
-          currentState.players.map((player) => player.id).join("|");
-        const nextPlayerIds =
-          runtimePlayers.map((player) => player.id).join("|");
+        const currentPlayerSignature =
+          currentState.players.map((player) => `${player.id}:${player.wallet}`).join("|");
+        const nextPlayerSignature =
+          runtimePlayers.map((player) => `${player.id}:${player.wallet}`).join("|");
         const shouldResetRuntime =
-          !currentState.table.running && currentPlayerIds !== nextPlayerIds;
+          !currentState.table.running && currentPlayerSignature !== nextPlayerSignature;
 
         if (shouldResetRuntime) {
           runtimeRef.current = new PaseCasinoDemoRuntime({
@@ -819,7 +906,7 @@ function PlayPlatformCasinoExperience() {
         setLiveTable(nextLiveTable);
         if (shouldResetRuntime) {
           setSelectedShooter(firstPlayerId);
-          setSelectedQuickBetPlayer(firstPlayerId);
+          setSelectedQuickBetPlayer(selectedLivePlayerId);
           setGameState({ ...runtimeRef.current.getState() });
         }
         setLiveTableStatus(
@@ -842,7 +929,7 @@ function PlayPlatformCasinoExperience() {
       isMounted = false;
       window.clearInterval(refreshTimerId);
     };
-  }, [tableId]);
+  }, [tableId, urlPlayerId]);
 
   useEffect(() => {
     const syncFullscreen = () => {
@@ -896,7 +983,8 @@ function PlayPlatformCasinoExperience() {
     if (
       isRolling ||
       quickBetPhase !== "READY" ||
-      table.mainPot.status !== "COPADO"
+      table.mainPot.status !== "COPADO" ||
+      (isLivePlayer && currentPlayerId !== table.shooterId)
     ) {
       return;
     }
@@ -928,13 +1016,21 @@ function PlayPlatformCasinoExperience() {
   const confirmQuickBet = () => {
     const quickBetAmount =
       Number(selectedAmount) || 0;
+    const player =
+      players.find((item) => item.id === currentPlayerId);
 
-    if (!selectedQuickBetPlayer || quickBetPhase !== "BETTING" || quickBetAmount < 1000) {
+    if (
+      !currentPlayerId ||
+      !player ||
+      quickBetPhase !== "BETTING" ||
+      quickBetAmount < 1000 ||
+      quickBetAmount > player.wallet
+    ) {
       return;
     }
 
     updateState(runtime.placeQuickBet({
-      playerId: selectedQuickBetPlayer,
+      playerId: currentPlayerId,
       selection: selectedBet,
       amount: quickBetAmount,
     }));
@@ -965,7 +1061,7 @@ function PlayPlatformCasinoExperience() {
   };
 
   const setShooterStake = () => {
-    if (!selectedShooter) {
+    if (!selectedShooter || (isLivePlayer && currentPlayerId !== table.shooterId)) {
       return;
     }
 
@@ -977,16 +1073,15 @@ function PlayPlatformCasinoExperience() {
 
   const coverMainPot = () => {
     const amount = Math.max(
-      Math.min(20000, table.mainPot.requiredCover || 20000),
       Math.min(coverAmount, table.mainPot.requiredCover || coverAmount)
     );
-    const nextState = runtime.coverMainPot(null, amount);
+    const nextState = runtime.coverMainPot(currentPlayerId, amount);
     setCoverAmount(nextState.table.mainPot.requiredCover || mainPotAmount);
     updateState(nextState);
   };
 
   const passMainPotCoverage = () => {
-    const nextState = runtime.passMainPotCoverage();
+    const nextState = runtime.passMainPotCoverage(currentPlayerId);
     setCoverAmount(nextState.table.mainPot.requiredCover || mainPotAmount);
     updateState(nextState);
   };
@@ -1061,10 +1156,19 @@ function PlayPlatformCasinoExperience() {
               selectedBet={selectedBet}
               selectedAmount={selectedAmount}
               selectedQuickBetPlayer={selectedQuickBetPlayer}
+              currentPlayerId={currentPlayerId}
+              isLivePlayer={isLivePlayer}
+              mainPotAmount={mainPotAmount}
+              coverAmount={coverAmount}
               quickBetPhase={quickBetPhase}
               quickBetSeconds={quickBetSeconds}
               onSelectBet={setSelectedBet}
               onSelectQuickBetPlayer={setSelectedQuickBetPlayer}
+              onSelectMainPotAmount={setMainPotAmount}
+              onSetShooterStake={setShooterStake}
+              onSelectCoverAmount={setCoverAmount}
+              onCoverMainPot={coverMainPot}
+              onPassMainPotCoverage={passMainPotCoverage}
               onConfirmBet={confirmQuickBet}
               onStart={startTableRound}
               onRoll={rollWithAnimation}

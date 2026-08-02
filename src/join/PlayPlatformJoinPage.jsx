@@ -12,16 +12,20 @@ import "../admin/PlayPlatformAdminPanel.css";
 function PlayPlatformJoinPage() {
   const inviteCode =
     new URLSearchParams(window.location.search).get("invite");
+  const savedPlayerStorageKey =
+    inviteCode ? `playplatform-player-${inviteCode}` : null;
   const [invite, setInvite] = useState(null);
   const [displayName, setDisplayName] = useState("");
-  const [requestedAmount, setRequestedAmount] = useState(50000);
+  const [playerId, setPlayerId] = useState(() => (
+    savedPlayerStorageKey ? window.localStorage.getItem(savedPlayerStorageKey) ?? "" : ""
+  ));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const canSubmit =
-    displayName.trim().length >= 2 && requestedAmount >= 1000 && invite?.status === "pending";
+    displayName.trim().length >= 2 && invite?.status === "pending";
   const tableLink =
-    invite?.table_id ? `/?table=${invite.table_id}` : "/";
+    invite?.table_id ? `/?table=${invite.table_id}${playerId ? `&player=${playerId}` : ""}` : "/";
 
   useEffect(() => {
     async function loadInvite() {
@@ -53,17 +57,20 @@ function PlayPlatformJoinPage() {
     setMessage("");
 
     try {
-      await claimInvite({
+      const player = await claimInvite({
         inviteId: invite.id,
         tableId: invite.table_id,
         displayName: displayName.trim(),
-        requestedAmount,
       });
+      setPlayerId(player.id);
+      if (savedPlayerStorageKey) {
+        window.localStorage.setItem(savedPlayerStorageKey, player.id);
+      }
       setInvite({
         ...invite,
         status: "claimed",
       });
-      setMessage("Solicitud enviada. Espera que el administrador apruebe tus fichas.");
+      setMessage("Solicitud enviada con saldo cero. Espera que el administrador cargue tus fichas.");
     } catch (error) {
       setMessage(`No se pudo enviar la solicitud: ${error.message}`);
     } finally {
@@ -127,18 +134,6 @@ function PlayPlatformJoinPage() {
                 placeholder="Ej: Rodrigo"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                disabled={saving || invite?.status !== "pending"}
-              />
-            </label>
-
-            <label>
-              Fichas solicitadas
-              <input
-                type="number"
-                min="1000"
-                step="1000"
-                value={requestedAmount}
-                onChange={(event) => setRequestedAmount(Number(event.target.value))}
                 disabled={saving || invite?.status !== "pending"}
               />
             </label>

@@ -28,6 +28,10 @@ function createCoverageQueue(shooterId, sourcePlayers = initialPlayers) {
     .map((player) => player.id);
 }
 
+function findPlayer(players, playerId) {
+  return players.find((player) => player.id === playerId) ?? null;
+}
+
 function createPlayers(activeShooterId = "P1", sourcePlayers = initialPlayers) {
   return sourcePlayers.map((player, index) => ({
     ...player,
@@ -63,6 +67,7 @@ function createInitialState(sourcePlayers = initialPlayers, tableInfo = {}) {
         requiredCover: 0,
         promptedCoverPlayerId: null,
         coverageQueue: createCoverageQueue(shooterId, sourcePlayers),
+        coverageRound: 0,
         declinedCoverPlayerIds: [],
         coverageLog: [],
         shooterWinCount: 0,
@@ -115,6 +120,7 @@ function createEmptyMainPot(shooterId, sourcePlayers = initialPlayers) {
     requiredCover: 0,
     promptedCoverPlayerId: null,
     coverageQueue: createCoverageQueue(shooterId, sourcePlayers),
+    coverageRound: 0,
     declinedCoverPlayerIds: [],
     coverageLog: [],
     shooterWinCount: 0,
@@ -272,11 +278,13 @@ class PaseCasinoDemoRuntime {
 
   setShooterStake(amount) {
     const shooterAmount =
-      Math.max(20000, Number(amount) || 0);
+      Number(amount) || 0;
     const shooterId =
       this.state.table.shooterId;
+    const shooter =
+      findPlayer(this.state.players, shooterId);
 
-    if (!shooterId) {
+    if (!shooterId || !shooter || shooterAmount < 20000 || shooterAmount > shooter.wallet) {
       return this.getState();
     }
 
@@ -295,6 +303,7 @@ class PaseCasinoDemoRuntime {
       requiredCover: shooterAmount,
       promptedCoverPlayerId: coverageQueue[0] ?? null,
       coverageQueue,
+      coverageRound: 0,
       declinedCoverPlayerIds: [],
       coverageLog: [],
       shooterWinCount: 0,
@@ -327,8 +336,15 @@ class PaseCasinoDemoRuntime {
 
     const requestedCoverAmount =
       amount ?? mainPot.requiredCover;
+    const activePlayer =
+      findPlayer(this.state.players, activePlayerId);
+
+    if (!activePlayer) {
+      return this.getState();
+    }
+
     const coverAmount =
-      Math.max(0, Math.min(requestedCoverAmount, mainPot.requiredCover));
+      Math.max(0, Math.min(requestedCoverAmount, mainPot.requiredCover, activePlayer.wallet));
 
     if (coverAmount <= 0) {
       return this.getState();
@@ -341,8 +357,20 @@ class PaseCasinoDemoRuntime {
       mainPot.coverageQueue.filter(
         (queuedPlayerId) => queuedPlayerId !== activePlayerId
       );
+    const nextCoverageRound =
+      requiredCover === 0 ?
+        mainPot.coverageRound ?? 0 :
+        remainingQueue.length > 0 ?
+          mainPot.coverageRound ?? 0 :
+          (mainPot.coverageRound ?? 0) + 1;
+    const restartedQueue =
+      requiredCover > 0 && remainingQueue.length === 0 && nextCoverageRound < 3 ?
+        createCoverageQueue(mainPot.shooterId, this.state.players) :
+        remainingQueue;
     const nextPromptedCoverPlayerId =
-      requiredCover === 0 ? null : remainingQueue[0] ?? null;
+      requiredCover === 0 ? null : restartedQueue[0] ?? null;
+    const coverageExpired =
+      requiredCover > 0 && remainingQueue.length === 0 && nextCoverageRound >= 3;
     const updatedMainPot = {
       ...mainPot,
       kulo: nextCoverStake,
@@ -351,7 +379,8 @@ class PaseCasinoDemoRuntime {
       coverPlayerId: activePlayerId,
       requiredCover,
       promptedCoverPlayerId: nextPromptedCoverPlayerId,
-      coverageQueue: remainingQueue,
+      coverageQueue: restartedQueue,
+      coverageRound: nextCoverageRound,
       coverageLog: [
         {
           id: crypto.randomUUID(),
@@ -365,18 +394,26 @@ class PaseCasinoDemoRuntime {
       status:
         requiredCover === 0 ?
           "COPADO" :
+          coverageExpired ?
+            "SIN_COBERTURA" :
           nextPromptedCoverPlayerId ?
             "ESPERANDO_COBERTURA" :
             "SIN_COBERTURA",
     };
+    const nextPlayers =
+      updatePlayerWallet(this.state.players, activePlayerId, -coverAmount);
 
     this.state = {
       ...this.state,
-      players: updatePlayerWallet(this.state.players, activePlayerId, -coverAmount),
+      players: coverageExpired ?
+        updatePlayerWallet(nextPlayers, mainPot.shooterId, updatedMainPot.total) :
+        nextPlayers,
       table: {
         ...this.state.table,
         phase: requiredCover === 0 ? "WAITING_ROLL" : "WAITING_MAIN_POT",
-        mainPot: updatedMainPot,
+        mainPot: coverageExpired ?
+          createEmptyMainPot(mainPot.shooterId, this.state.players) :
+          updatedMainPot,
       },
     };
 
@@ -399,16 +436,30 @@ class PaseCasinoDemoRuntime {
       );
     const nextPromptedCoverPlayerId =
       remainingQueue[0] ?? null;
+    const nextCoverageRound =
+      nextPromptedCoverPlayerId ?
+        mainPot.coverageRound ?? 0 :
+        (mainPot.coverageRound ?? 0) + 1;
+    const restartedQueue =
+      !nextPromptedCoverPlayerId && nextCoverageRound < 3 ?
+        createCoverageQueue(mainPot.shooterId, this.state.players) :
+        remainingQueue;
+    const coverageExpired =
+      !nextPromptedCoverPlayerId && nextCoverageRound >= 3;
 
     this.state = {
       ...this.state,
+      players: coverageExpired ?
+        updatePlayerWallet(this.state.players, mainPot.shooterId, mainPot.total) :
+        this.state.players,
       table: {
         ...this.state.table,
         phase: "WAITING_MAIN_POT",
-        mainPot: {
+        mainPot: coverageExpired ? createEmptyMainPot(mainPot.shooterId, this.state.players) : {
           ...mainPot,
-          promptedCoverPlayerId: nextPromptedCoverPlayerId,
-          coverageQueue: remainingQueue,
+          promptedCoverPlayerId: restartedQueue[0] ?? null,
+          coverageQueue: restartedQueue,
+          coverageRound: nextCoverageRound,
           declinedCoverPlayerIds: [
             activePlayerId,
             ...mainPot.declinedCoverPlayerIds,
@@ -423,7 +474,7 @@ class PaseCasinoDemoRuntime {
             ...mainPot.coverageLog,
           ].slice(0, 10),
           status:
-            nextPromptedCoverPlayerId ?
+            restartedQueue[0] ?
               "ESPERANDO_COBERTURA" :
               "SIN_COBERTURA",
         },
@@ -462,6 +513,7 @@ class PaseCasinoDemoRuntime {
           requiredCover,
           promptedCoverPlayerId: coverageQueue[0] ?? null,
           coverageQueue,
+          coverageRound: 0,
           declinedCoverPlayerIds: [],
           coverageLog: [],
           shooterWinCount: (mainPot.shooterWinCount ?? 0) + 1,
@@ -483,7 +535,13 @@ class PaseCasinoDemoRuntime {
     }
 
     const betAmount =
-      Math.max(1000, Number(amount) || 0);
+      Number(amount) || 0;
+    const player =
+      findPlayer(this.state.players, playerId);
+
+    if (!player || betAmount < 1000 || betAmount > player.wallet) {
+      return this.getState();
+    }
 
     if (!this.state.table.running) {
       this.startTable();

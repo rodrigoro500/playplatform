@@ -208,23 +208,38 @@ async function approvePlayerChips(playerId, tableId, amount) {
     throw playerError;
   }
 
-  const {
+  let {
     data: wallet,
     error: walletError,
   } = await supabase
     .from("wallets")
-    .upsert({
-      player_id: playerId,
-      balance: 0,
-      currency: "Gs",
-    }, {
-      onConflict: "player_id",
-    })
     .select("id")
-    .single();
+    .eq("player_id", playerId)
+    .maybeSingle();
 
   if (walletError) {
     throw walletError;
+  }
+
+  if (!wallet) {
+    const {
+      data: createdWallet,
+      error: createWalletError,
+    } = await supabase
+      .from("wallets")
+      .insert({
+        player_id: playerId,
+        balance: 0,
+        currency: "Gs",
+      })
+      .select("id")
+      .single();
+
+    if (createWalletError) {
+      throw createWalletError;
+    }
+
+    wallet = createdWallet;
   }
 
   const {
@@ -278,7 +293,6 @@ async function claimInvite({
   inviteId,
   tableId,
   displayName,
-  requestedAmount,
 }) {
   const {
     data: player,
@@ -299,21 +313,6 @@ async function claimInvite({
 
   if (playerError) {
     throw playerError;
-  }
-
-  const {
-    error: requestError,
-  } = await supabase
-    .from("chip_requests")
-    .insert({
-      table_id: tableId,
-      player_id: player.id,
-      requested_amount: Math.max(1000, Number(requestedAmount) || 0),
-      status: "pending",
-    });
-
-  if (requestError) {
-    throw requestError;
   }
 
   const {
