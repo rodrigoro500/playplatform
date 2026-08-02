@@ -107,6 +107,22 @@ function updatePlayerWallet(players, playerId, amount) {
   );
 }
 
+function refundCoverageContributions(players, coverageLog) {
+  return (coverageLog ?? [])
+    .filter((item) => item.action === "CUBRIO" && item.amount > 0)
+    .reduce(
+      (nextPlayers, item) => updatePlayerWallet(nextPlayers, item.playerId, item.amount),
+      players
+    );
+}
+
+function settleExpiredCoverage(players, mainPot) {
+  const refundedPlayers =
+    refundCoverageContributions(players, mainPot.coverageLog);
+
+  return updatePlayerWallet(refundedPlayers, mainPot.shooterId, mainPot.suerte);
+}
+
 function createEmptyMainPot(shooterId, sourcePlayers = initialPlayers) {
   return {
     suerte: 0,
@@ -414,7 +430,7 @@ class PaseCasinoDemoRuntime {
     this.state = {
       ...this.state,
       players: coverageExpired ?
-        updatePlayerWallet(nextPlayers, mainPot.shooterId, updatedMainPot.total) :
+        settleExpiredCoverage(nextPlayers, updatedMainPot) :
         nextPlayers,
       table: {
         ...this.state.table,
@@ -458,7 +474,7 @@ class PaseCasinoDemoRuntime {
     this.state = {
       ...this.state,
       players: coverageExpired ?
-        updatePlayerWallet(this.state.players, mainPot.shooterId, mainPot.total) :
+        settleExpiredCoverage(this.state.players, mainPot) :
         this.state.players,
       table: {
         ...this.state.table,

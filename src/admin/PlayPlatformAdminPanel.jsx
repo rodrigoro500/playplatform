@@ -65,9 +65,13 @@ function PlayPlatformAdminPanel() {
       0
     ), [selectedTable?.players]);
 
-  const loadTables = async () => {
-    setLoading(true);
-    setMessage("");
+  const loadTables = async ({
+    silent = false,
+  } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setMessage("");
+    }
 
     try {
       const nextTables =
@@ -79,14 +83,24 @@ function PlayPlatformAdminPanel() {
           nextTables[0]?.id ?? null
       ));
     } catch (error) {
-      setMessage(`No se pudo cargar Supabase: ${error.message}`);
+      if (!silent) {
+        setMessage(`No se pudo cargar Supabase: ${error.message}`);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     loadTables();
+    const refreshTimerId =
+      window.setInterval(() => loadTables({
+        silent: true,
+      }), 4000);
+
+    return () => window.clearInterval(refreshTimerId);
   }, []);
 
   const handleCreateTable = async () => {
@@ -303,7 +317,7 @@ function PlayPlatformAdminPanel() {
                     </div>
                     <div className="admin-row-actions">
                       <button type="button" onClick={() => handleApprovePlayer(player.id)} disabled={saving}>
-                        Aprobar fichas
+                        Cargar fichas
                       </button>
                       <button type="button" onClick={() => handleToggleMute(player)} disabled={saving}>
                         {player.muted ? "Activar voz" : "Silenciar"}

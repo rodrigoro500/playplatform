@@ -12,6 +12,7 @@ import {
   fetchTableById,
   hasSupabaseConfig,
   saveGameSnapshot,
+  syncPlayerWalletBalances,
 } from "../../../lib/playPlatformDataService";
 import "./PlayPlatformCasinoExperience.css";
 
@@ -58,6 +59,34 @@ function mapLivePlayerToRuntimePlayer(player) {
     name: player.name,
     wallet: player.chips,
   };
+}
+
+function mergeAdminWalletLoads(currentState, runtimePlayers) {
+  let changed = false;
+  const liveWallets = new Map(
+    runtimePlayers.map((player) => [player.id, player.wallet])
+  );
+  const players = currentState.players.map((player) => {
+    const liveWallet =
+      liveWallets.get(player.id);
+
+    if (typeof liveWallet !== "number" || liveWallet <= player.wallet) {
+      return player;
+    }
+
+    changed = true;
+
+    return {
+      ...player,
+      wallet: liveWallet,
+      formattedWallet: formatMoney(liveWallet),
+    };
+  });
+
+  return changed ? {
+    ...currentState,
+    players,
+  } : currentState;
 }
 
 function Die({
@@ -831,6 +860,7 @@ function PlayPlatformCasinoExperience() {
       lastSnapshotSignatureRef.current = snapshotSignature;
       savingSnapshotRef.current = true;
       saveGameSnapshot(tableId, syncedState)
+        .then(() => syncPlayerWalletBalances(syncedState.players))
         .catch((error) => {
           setLiveTableStatus(`No se pudo sincronizar la mesa: ${error.message}`);
         })
@@ -903,6 +933,13 @@ function PlayPlatformCasinoExperience() {
           setSelectedShooter(firstPlayerId);
           setSelectedQuickBetPlayer(selectedLivePlayerId);
           setGameState({ ...runtimeRef.current.getState() });
+        } else if (currentState.table.running && !savingSnapshotRef.current) {
+          const mergedState =
+            mergeAdminWalletLoads(currentState, runtimePlayers);
+
+          if (mergedState !== currentState) {
+            updateState(mergedState);
+          }
         }
         setLiveTableStatus(
           runtimePlayers.length > 0 ?

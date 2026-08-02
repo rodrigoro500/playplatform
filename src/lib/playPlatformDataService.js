@@ -174,6 +174,30 @@ async function saveGameSnapshot(tableId, state) {
   return data;
 }
 
+async function syncPlayerWalletBalances(players) {
+  if (!hasSupabaseConfig || !Array.isArray(players)) {
+    return;
+  }
+
+  await Promise.all(players.map(async (player) => {
+    const balance =
+      Math.max(0, Number(player.wallet) || 0);
+
+    const {
+      error,
+    } = await supabase
+      .from("wallets")
+      .update({
+        balance,
+      })
+      .eq("player_id", player.id);
+
+    if (error) {
+      throw error;
+    }
+  }));
+}
+
 async function createTable(name) {
   const tableCode =
     createTableCode();
@@ -395,5 +419,6 @@ export {
   findInvite,
   hasSupabaseConfig,
   saveGameSnapshot,
+  syncPlayerWalletBalances,
   updatePlayerVoice,
 };
