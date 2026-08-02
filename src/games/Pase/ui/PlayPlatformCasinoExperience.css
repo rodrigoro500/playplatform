@@ -517,12 +517,14 @@
   margin-top: 10px;
 }
 
-.casino-quick-pool div {
+.casino-quick-pool button {
   display: grid;
   gap: 4px;
   border: 1px solid currentColor;
   border-radius: 8px;
   padding: 10px 9px;
+  text-align: left;
+  cursor: pointer;
 }
 
 .casino-quick-pool span {
@@ -545,6 +547,34 @@
 .casino-quick-pool .kulo {
   background: rgba(127, 29, 29, 0.14);
   color: #fca5a5;
+}
+
+.casino-quick-pool button.is-selected {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26), 0 0 20px rgba(52, 211, 153, 0.18);
+}
+
+.casino-quick-pool button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.casino-quick-confirm {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid rgba(252, 211, 77, 0.45);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(120, 83, 21, 0.72), rgba(42, 27, 9, 0.9));
+  color: #fef3c7;
+  padding: 12px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.casino-quick-confirm:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .casino-quick-timer {

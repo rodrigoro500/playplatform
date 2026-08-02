@@ -127,6 +127,53 @@ async function fetchTableById(tableId) {
   return mapTable(data);
 }
 
+async function fetchGameSnapshot(tableId) {
+  if (!hasSupabaseConfig || !tableId) {
+    return null;
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("game_snapshots")
+    .select("state, updated_at")
+    .eq("table_id", tableId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+async function saveGameSnapshot(tableId, state) {
+  if (!hasSupabaseConfig || !tableId || !state) {
+    return null;
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("game_snapshots")
+    .upsert({
+      table_id: tableId,
+      state,
+    }, {
+      onConflict: "table_id",
+    })
+    .select("updated_at")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
 async function createTable(name) {
   const tableCode =
     createTableCode();
@@ -342,9 +389,11 @@ export {
   createInvite,
   createInviteCode,
   createTable,
+  fetchGameSnapshot,
   fetchTableById,
   fetchTables,
   findInvite,
   hasSupabaseConfig,
+  saveGameSnapshot,
   updatePlayerVoice,
 };

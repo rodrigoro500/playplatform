@@ -8,8 +8,10 @@ import PaseCasinoDemoRuntime, {
   formatMoney,
 } from "./PaseCasinoDemoRuntime";
 import {
+  fetchGameSnapshot,
   fetchTableById,
   hasSupabaseConfig,
+  saveGameSnapshot,
 } from "../../../lib/playPlatformDataService";
 import "./PlayPlatformCasinoExperience.css";
 
@@ -197,10 +199,14 @@ function AvailableSeat({
 
 function LeftPanel({
   table,
+  selectedBet,
   selectedAmount,
   quickBetPhase,
   quickBetSeconds,
+  canConfirmQuickBet,
+  onSelectBet,
   onSelectAmount,
+  onConfirmBet,
 }) {
   const quickAmounts = [1000, 5000, 10000, 50000, 100000];
   const quickBetOpen = quickBetPhase === "BETTING";
@@ -218,14 +224,24 @@ function LeftPanel({
           )}
         </div>
         <div className="casino-quick-pool">
-          <div className="suerte">
+          <button
+            type="button"
+            className={`suerte ${selectedBet === "SUERTE" ? "is-selected" : ""}`}
+            onClick={() => onSelectBet("SUERTE")}
+            disabled={!quickBetOpen}
+          >
             <span>SUERTE</span>
             <strong>{formatMoney(table.instantPool.suerte)} Gs</strong>
-          </div>
-          <div className="kulo">
+          </button>
+          <button
+            type="button"
+            className={`kulo ${selectedBet === "KULO" ? "is-selected" : ""}`}
+            onClick={() => onSelectBet("KULO")}
+            disabled={!quickBetOpen}
+          >
             <span>KULO</span>
             <strong>{formatMoney(table.instantPool.kulo)} Gs</strong>
-          </div>
+          </button>
         </div>
         <div className="casino-chip-grid">
           {quickAmounts.map((amount) => (
@@ -262,6 +278,14 @@ function LeftPanel({
             }}
           />
         </label>
+        <button
+          type="button"
+          className="casino-quick-confirm"
+          onClick={onConfirmBet}
+          disabled={!canConfirmQuickBet}
+        >
+          Apostar {selectedBet}
+        </button>
       </Panel>
 
       <ChatPanel />
@@ -611,14 +635,11 @@ function BottomBar({
   coverAmount,
   quickBetPhase,
   quickBetSeconds,
-  onSelectBet,
-  onSelectAmount,
   onSelectMainPotAmount,
   onSetShooterStake,
   onSelectCoverAmount,
   onCoverMainPot,
   onPassMainPotCoverage,
-  onConfirmBet,
   onRoll,
 }) {
   const currentPlayer =
@@ -632,13 +653,7 @@ function BottomBar({
   const selectedAmountValue = Number(selectedAmount) || 0;
   const mainPotAmountValue = Number(mainPotAmount) || 0;
   const coverAmountValue = Number(coverAmount) || 0;
-  const quickBetOpen = quickBetPhase === "BETTING";
   const mainPotCopado = table.mainPot.status === "COPADO";
-  const canConfirmQuickBet =
-    quickBetOpen &&
-    Boolean(currentPlayer) &&
-    selectedAmountValue >= 1000 &&
-    selectedAmountValue <= (currentPlayer?.wallet ?? 0);
   const canSetShooterStake =
     currentPlayerId === table.shooterId &&
     mainPotAmountValue >= 20000 &&
@@ -740,43 +755,6 @@ function BottomBar({
           )}
         </div>
       )}
-      <label className="casino-player-selector">
-        <span>Monto jugada</span>
-        <input
-          type="number"
-          min="1000"
-          step="1000"
-          value={selectedAmount}
-          onChange={(event) => onSelectAmount(Number(event.target.value))}
-          disabled={!quickBetOpen || !currentPlayer}
-        />
-      </label>
-      <div className="casino-bet-selector">
-        <button
-          type="button"
-          onClick={() => onSelectBet("SUERTE")}
-          className={selectedBet === "SUERTE" ? "is-selected" : ""}
-          disabled={!quickBetOpen}
-        >
-          SUERTE
-        </button>
-        <button
-          type="button"
-          onClick={() => onSelectBet("KULO")}
-          className={selectedBet === "KULO" ? "is-selected" : ""}
-          disabled={!quickBetOpen}
-        >
-          KULO
-        </button>
-      </div>
-      <button
-        type="button"
-        onClick={onConfirmBet}
-        className="casino-action-button confirm"
-        disabled={!canConfirmQuickBet}
-      >
-        Confirmar apuesta
-      </button>
       <button
         type="button"
         onClick={onRoll}
@@ -802,6 +780,8 @@ function PlayPlatformCasinoExperience() {
   const runtime = runtimeRef.current;
   const rollTimerRef = useRef(null);
   const rollIntervalRef = useRef(null);
+  const lastSnapshotSignatureRef = useRef("");
+  const savingSnapshotRef = useRef(false);
   const [gameState, setGameState] = useState(runtime.getState());
   const [liveTable, setLiveTable] = useState(null);
   const [liveTableStatus, setLiveTableStatus] = useState(tableId ? "Cargando mesa..." : "");
@@ -826,8 +806,39 @@ function PlayPlatformCasinoExperience() {
     isLivePlayer ? urlPlayerId : selectedQuickBetPlayer;
   const accountPlayer =
     players.find((player) => player.id === currentPlayerId) ?? players[0] ?? null;
+  const selectedAmountValue =
+    Number(selectedAmount) || 0;
+  const canConfirmQuickBet =
+    quickBetPhase === "BETTING" &&
+    table.mainPot.status === "COPADO" &&
+    Boolean(accountPlayer) &&
+    selectedAmountValue >= 1000 &&
+    selectedAmountValue <= (accountPlayer?.wallet ?? 0);
   const phase = phaseLabels[table.phase] ?? table.phase;
-  const updateState = (nextState) => setGameState({ ...nextState });
+  const updateState = (nextState, {
+    persist = true,
+  } = {}) => {
+    const syncedState = {
+      ...nextState,
+    };
+
+    runtimeRef.current.hydrateState(syncedState);
+    setGameState(syncedState);
+
+    if (tableId && persist) {
+      const snapshotSignature =
+        JSON.stringify(syncedState);
+      lastSnapshotSignatureRef.current = snapshotSignature;
+      savingSnapshotRef.current = true;
+      saveGameSnapshot(tableId, syncedState)
+        .catch((error) => {
+          setLiveTableStatus(`No se pudo sincronizar la mesa: ${error.message}`);
+        })
+        .finally(() => {
+          savingSnapshotRef.current = false;
+        });
+    }
+  };
   const resetQuickBetWindow = () => {
     setQuickBetPhase("BETTING");
     setQuickBetSeconds(20);
@@ -914,6 +925,57 @@ function PlayPlatformCasinoExperience() {
       window.clearInterval(refreshTimerId);
     };
   }, [tableId, urlPlayerId]);
+
+  useEffect(() => {
+    if (!tableId) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const syncSnapshot = async () => {
+      if (isRolling || savingSnapshotRef.current) {
+        return;
+      }
+
+      try {
+        const snapshot =
+          await fetchGameSnapshot(tableId);
+
+        if (!isMounted || !snapshot?.state) {
+          return;
+        }
+
+        const snapshotSignature =
+          JSON.stringify(snapshot.state);
+
+        if (snapshotSignature === lastSnapshotSignatureRef.current) {
+          return;
+        }
+
+        lastSnapshotSignatureRef.current = snapshotSignature;
+        runtimeRef.current.hydrateState(snapshot.state);
+        setSelectedShooter(snapshot.state.table?.shooterId ?? "");
+        setCoverAmount(snapshot.state.table?.mainPot?.requiredCover || mainPotAmount);
+        setGameState({
+          ...snapshot.state,
+        });
+      } catch (error) {
+        if (isMounted) {
+          setLiveTableStatus(`No se pudo actualizar la mesa: ${error.message}`);
+        }
+      }
+    };
+
+    syncSnapshot();
+    const snapshotTimerId =
+      window.setInterval(syncSnapshot, 2000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(snapshotTimerId);
+    };
+  }, [isRolling, mainPotAmount, tableId]);
 
   useEffect(() => {
     const syncFullscreen = () => {
@@ -1111,10 +1173,14 @@ function PlayPlatformCasinoExperience() {
         <section className="casino-layout">
           <LeftPanel
             table={table}
+            selectedBet={selectedBet}
             selectedAmount={selectedAmount}
             quickBetPhase={quickBetPhase}
             quickBetSeconds={quickBetSeconds}
+            canConfirmQuickBet={canConfirmQuickBet}
+            onSelectBet={setSelectedBet}
             onSelectAmount={setSelectedAmount}
+            onConfirmBet={confirmQuickBet}
           />
           <div className="casino-center-frame">
             <GameTable
@@ -1145,14 +1211,11 @@ function PlayPlatformCasinoExperience() {
               coverAmount={coverAmount}
               quickBetPhase={quickBetPhase}
               quickBetSeconds={quickBetSeconds}
-              onSelectBet={setSelectedBet}
-              onSelectAmount={setSelectedAmount}
               onSelectMainPotAmount={setMainPotAmount}
               onSetShooterStake={setShooterStake}
               onSelectCoverAmount={setCoverAmount}
               onCoverMainPot={coverMainPot}
               onPassMainPotCoverage={passMainPotCoverage}
-              onConfirmBet={confirmQuickBet}
               onRoll={rollWithAnimation}
             />
           </div>

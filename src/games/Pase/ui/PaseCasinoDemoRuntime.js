@@ -220,6 +220,14 @@ class PaseCasinoDemoRuntime {
     return this.state;
   }
 
+  hydrateState(state) {
+    if (state) {
+      this.state = state;
+    }
+
+    return this.getState();
+  }
+
   startTable() {
     const shooterId = this.state.table.shooterId;
     const mainPot =
