@@ -669,6 +669,8 @@ function BottomBar({
   onSelectCoverAmount,
   onCoverMainPot,
   onPassMainPotCoverage,
+  onAcceptShooterTurn,
+  onPassShooterTurn,
   onRoll,
 }) {
   const currentPlayer =
@@ -709,6 +711,26 @@ function BottomBar({
 
   return (
     <div className="casino-bottom-bar">
+      {table.mainPot.status === "PREGUNTAR_TIRADOR" && (
+        <div className="casino-action-box wide">
+          <small>{currentPlayerId === table.shooterId ? "Tu turno" : "Cambio de turno"}</small>
+          <strong>{shooter?.name ?? "Sin tirador"}</strong>
+          {currentPlayerId === table.shooterId ? (
+            <div className="casino-bottom-inline">
+              <button type="button" onClick={onAcceptShooterTurn}>
+                Seguir tirando
+              </button>
+              <button type="button" onClick={onPassShooterTurn}>
+                Pasar turno
+              </button>
+            </div>
+          ) : (
+            <span className="casino-current-bet-side">
+              Esperando si {shooter?.name ?? "el tirador"} quiere volver a tirar
+            </span>
+          )}
+        </div>
+      )}
       {table.mainPot.status === "ESPERANDO_TIRADOR" && (
         <div className="casino-action-box wide">
           <small>{currentPlayerId === table.shooterId ? "Eres tirador" : "Pozo del tirador"}</small>
@@ -733,7 +755,9 @@ function BottomBar({
           )}
         </div>
       )}
-      {table.mainPot.status !== "ESPERANDO_TIRADOR" && !mainPotCopado && (
+      {table.mainPot.status !== "ESPERANDO_TIRADOR" &&
+        table.mainPot.status !== "PREGUNTAR_TIRADOR" &&
+        !mainPotCopado && (
         <div className="casino-action-box wide">
           <small>Copar pozo por KULO</small>
           <strong>{promptedPlayer?.name ?? "Buscando cobertura"}</strong>
@@ -1169,6 +1193,17 @@ function PlayPlatformCasinoExperience() {
     updateState(nextState);
   };
 
+  const acceptShooterTurn = () => {
+    updateState(runtime.acceptShooterTurn());
+  };
+
+  const passShooterTurn = () => {
+    const nextState =
+      runtime.passShooterTurn();
+    setSelectedShooter(nextState.table.shooterId ?? "");
+    updateState(nextState);
+  };
+
   return (
     <main className="casino-screen">
       <div className="casino-shell">
@@ -1253,6 +1288,8 @@ function PlayPlatformCasinoExperience() {
               onSelectCoverAmount={setCoverAmount}
               onCoverMainPot={coverMainPot}
               onPassMainPotCoverage={passMainPotCoverage}
+              onAcceptShooterTurn={acceptShooterTurn}
+              onPassShooterTurn={passShooterTurn}
               onRoll={rollWithAnimation}
             />
           </div>

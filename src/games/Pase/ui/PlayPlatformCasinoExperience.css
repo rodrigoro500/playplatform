@@ -1382,6 +1382,10 @@
   margin-top: 7px;
 }
 
+.casino-bottom-inline:has(button:first-child:nth-last-child(2)) {
+  grid-template-columns: 1fr 1fr;
+}
+
 .casino-bottom-inline input {
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
