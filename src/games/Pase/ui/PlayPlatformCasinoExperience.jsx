@@ -612,6 +612,7 @@ function BottomBar({
   quickBetPhase,
   quickBetSeconds,
   onSelectBet,
+  onSelectAmount,
   onSelectMainPotAmount,
   onSetShooterStake,
   onSelectCoverAmount,
@@ -739,6 +740,17 @@ function BottomBar({
           )}
         </div>
       )}
+      <label className="casino-player-selector">
+        <span>Monto jugada</span>
+        <input
+          type="number"
+          min="1000"
+          step="1000"
+          value={selectedAmount}
+          onChange={(event) => onSelectAmount(Number(event.target.value))}
+          disabled={!quickBetOpen || !currentPlayer}
+        />
+      </label>
       <div className="casino-bet-selector">
         <button
           type="button"
@@ -1134,6 +1146,7 @@ function PlayPlatformCasinoExperience() {
               quickBetPhase={quickBetPhase}
               quickBetSeconds={quickBetSeconds}
               onSelectBet={setSelectedBet}
+              onSelectAmount={setSelectedAmount}
               onSelectMainPotAmount={setMainPotAmount}
               onSetShooterStake={setShooterStake}
               onSelectCoverAmount={setCoverAmount}

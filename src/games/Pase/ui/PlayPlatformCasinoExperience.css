@@ -1274,7 +1274,8 @@
   text-transform: uppercase;
 }
 
-.casino-player-selector select {
+.casino-player-selector select,
+.casino-player-selector input {
   min-width: 0;
   border: 0;
   background: transparent;
@@ -1633,17 +1634,17 @@
   }
 
   .casino-table-stage {
-    min-height: 420px;
+    min-height: 340px;
     overflow: hidden;
-    padding: 8px;
+    padding: 4px;
   }
 
   .casino-wood-table {
     left: 50%;
-    top: 45%;
-    width: 560px;
-    height: 360px;
-    transform: translate(-50%, -50%) scale(0.64);
+    top: 43%;
+    width: 540px;
+    height: 340px;
+    transform: translate(-50%, -50%) scale(0.58);
     transform-origin: center;
   }
 
@@ -1706,7 +1707,8 @@
 
   .casino-player-card.is-available {
     min-width: 0;
-    width: 42px;
+    width: 38px;
+    height: 38px;
     justify-content: center;
     padding: 4px;
   }
@@ -1720,6 +1722,40 @@
     height: 32px;
     width: 32px;
     font-size: 10px;
+  }
+
+  .casino-player-card.is-available .casino-player-avatar {
+    height: 30px;
+    width: 30px;
+  }
+
+  .casino-player:has(.casino-player-card.is-available).seat-2 {
+    right: 3%;
+    top: 42%;
+  }
+
+  .casino-player:has(.casino-player-card.is-available).seat-3 {
+    right: 15%;
+    bottom: 22%;
+  }
+
+  .casino-player:has(.casino-player-card.is-available).seat-4 {
+    bottom: 10%;
+  }
+
+  .casino-player:has(.casino-player-card.is-available).seat-5 {
+    left: 15%;
+    bottom: 22%;
+  }
+
+  .casino-player:has(.casino-player-card.is-available).seat-6 {
+    left: 3%;
+    top: 42%;
+  }
+
+  .casino-player:has(.casino-player-card.is-available).seat-7 {
+    left: 16%;
+    top: 22%;
   }
 
   .casino-player-name {
