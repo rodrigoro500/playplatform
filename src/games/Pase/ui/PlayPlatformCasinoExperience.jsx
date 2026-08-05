@@ -14,6 +14,7 @@ import {
   saveGameSnapshot,
   syncPlayerWalletBalances,
 } from "../../../lib/playPlatformDataService";
+import useTableVoice from "../../../voice/useTableVoice";
 import "./PlayPlatformCasinoExperience.css";
 
 const phaseLabels = {
@@ -222,6 +223,10 @@ function AvailableSeat({
 
 function LeftPanel({
   table,
+  tableId,
+  currentPlayer,
+  players,
+  isLivePlayer,
   selectedBet,
   selectedAmount,
   quickBetPhase,
@@ -313,12 +318,155 @@ function LeftPanel({
         </button>
       </Panel>
 
-      <ChatPanel />
+      <ChatPanel
+        tableId={tableId}
+        currentPlayer={currentPlayer}
+        players={players}
+        isLivePlayer={isLivePlayer}
+      />
     </aside>
   );
 }
 
-function ChatPanel() {
+function RemoteAudio({
+  participant,
+  muted,
+}) {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.srcObject = participant.stream;
+    }
+  }, [participant.stream]);
+
+  return (
+    <audio
+      ref={audioRef}
+      autoPlay
+      playsInline
+      muted={muted}
+    />
+  );
+}
+
+function VoiceRoomPanel({
+  tableId,
+  currentPlayer,
+  players,
+  isLivePlayer,
+}) {
+  const {
+    connected,
+    connecting,
+    micEnabled,
+    roomMuted,
+    status,
+    participants,
+    joinVoice,
+    leaveVoice,
+    toggleMic,
+    toggleRoomAudio,
+  } = useTableVoice({
+    tableId,
+    player: currentPlayer,
+    tablePlayers: players,
+  });
+
+  const canUseVoice =
+    Boolean(isLivePlayer && tableId && currentPlayer);
+
+  return (
+    <div className="casino-voice-room">
+      <div className="casino-voice-head">
+        <div>
+          <div className="casino-panel-title">Voz en vivo</div>
+          <div className="casino-muted">
+            {canUseVoice ? "Sala privada de esta mesa" : "Disponible en mesa real"}
+          </div>
+        </div>
+        <span className={`casino-voice-state ${connected ? "is-online" : ""}`}>
+          {connected ? "Conectado" : "Offline"}
+        </span>
+      </div>
+
+      <div className="casino-voice-actions">
+        {!connected ? (
+          <button
+            type="button"
+            className="casino-chat-voice"
+            onClick={joinVoice}
+            disabled={!canUseVoice || connecting}
+          >
+            {connecting ? "Conectando..." : "Entrar a voz"}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="casino-chat-voice"
+              onClick={toggleMic}
+              disabled={currentPlayer?.muted}
+            >
+              {micEnabled ? "Silenciar micro" : "Activar micro"}
+            </button>
+            <button
+              type="button"
+              className="casino-chat-toggle"
+              onClick={toggleRoomAudio}
+            >
+              {roomMuted ? "Escuchar mesa" : "Silenciar mesa"}
+            </button>
+            <button
+              type="button"
+              className="casino-chat-toggle"
+              onClick={leaveVoice}
+            >
+              Salir
+            </button>
+          </>
+        )}
+      </div>
+
+      {status && (
+        <div className="casino-voice-status">
+          {status}
+        </div>
+      )}
+
+      <div className="casino-voice-list">
+        <div className="casino-voice-participant">
+          <span className={micEnabled ? "is-speaking" : ""} />
+          <strong>{currentPlayer?.name ?? "Tu usuario"}</strong>
+          <small>{micEnabled ? "Micro activo" : "Micro apagado"}</small>
+        </div>
+        {participants.map((participant) => (
+          <div
+            key={participant.clientId}
+            className="casino-voice-participant"
+          >
+            <span className="is-speaking" />
+            <strong>{participant.name}</strong>
+            <small>Escuchando</small>
+            {participant.stream && (
+              <RemoteAudio
+                participant={participant}
+                muted={roomMuted}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChatPanel({
+  tableId,
+  currentPlayer,
+  players,
+  isLivePlayer,
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -363,6 +511,12 @@ function ChatPanel() {
               Enviar
             </button>
           </div>
+          <VoiceRoomPanel
+            tableId={tableId}
+            currentPlayer={currentPlayer}
+            players={players}
+            isLivePlayer={isLivePlayer}
+          />
         </>
       )}
     </Panel>
@@ -1300,6 +1454,10 @@ function PlayPlatformCasinoExperience() {
         <section className="casino-layout">
           <LeftPanel
             table={table}
+            tableId={tableId}
+            currentPlayer={accountPlayer}
+            players={players}
+            isLivePlayer={isLivePlayer}
             selectedBet={selectedBet}
             selectedAmount={selectedAmount}
             quickBetPhase={quickBetPhase}
