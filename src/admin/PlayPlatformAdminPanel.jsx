@@ -10,6 +10,7 @@ import {
   approvePlayerChips,
   createInvite,
   createTable,
+  deletePlayer,
   fetchTables,
   hasSupabaseConfig,
   updatePlayerVoice,
@@ -172,6 +173,28 @@ function PlayPlatformAdminPanel() {
     }
   };
 
+  const handleDeletePlayer = async (player) => {
+    const confirmed =
+      window.confirm(`Eliminar a ${player.name} de la mesa?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    try {
+      await deletePlayer(player.id);
+      await loadTables();
+      setMessage("Jugador eliminado correctamente.");
+    } catch (error) {
+      setMessage(`No se pudo eliminar al jugador: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <main className="admin-screen">
       <section className="admin-shell">
@@ -321,6 +344,9 @@ function PlayPlatformAdminPanel() {
                       </button>
                       <button type="button" onClick={() => handleToggleMute(player)} disabled={saving}>
                         {player.muted ? "Activar voz" : "Silenciar"}
+                      </button>
+                      <button type="button" onClick={() => handleDeletePlayer(player)} disabled={saving}>
+                        Eliminar jugador
                       </button>
                     </div>
                   </article>

@@ -38,15 +38,24 @@ function mapTable(row) {
   };
 }
 
+function requireSupabase() {
+  if (!hasSupabaseConfig || !supabase) {
+    throw new Error("Falta configurar Supabase.");
+  }
+
+  return supabase;
+}
+
 async function fetchTables() {
   if (!hasSupabaseConfig) {
     return [];
   }
 
+  const client = requireSupabase();
   const {
     data,
     error,
-  } = await supabase
+  } = await client
     .from("play_tables")
     .select(`
       id,
@@ -88,10 +97,11 @@ async function fetchTableById(tableId) {
     return null;
   }
 
+  const client = requireSupabase();
   const {
     data,
     error,
-  } = await supabase
+  } = await client
     .from("play_tables")
     .select(`
       id,
@@ -132,10 +142,11 @@ async function fetchGameSnapshot(tableId) {
     return null;
   }
 
+  const client = requireSupabase();
   const {
     data,
     error,
-  } = await supabase
+  } = await client
     .from("game_snapshots")
     .select("state, updated_at")
     .eq("table_id", tableId)
@@ -153,10 +164,11 @@ async function saveGameSnapshot(tableId, state) {
     return null;
   }
 
+  const client = requireSupabase();
   const {
     data,
     error,
-  } = await supabase
+  } = await client
     .from("game_snapshots")
     .upsert({
       table_id: tableId,
@@ -179,13 +191,14 @@ async function syncPlayerWalletBalances(players) {
     return;
   }
 
+  const client = requireSupabase();
   await Promise.all(players.map(async (player) => {
     const balance =
       Math.max(0, Number(player.wallet) || 0);
 
     const {
       error,
-    } = await supabase
+    } = await client
       .from("wallets")
       .update({
         balance,
@@ -199,12 +212,13 @@ async function syncPlayerWalletBalances(players) {
 }
 
 async function createTable(name) {
+  const client = requireSupabase();
   const tableCode =
     createTableCode();
   const {
     data,
     error,
-  } = await supabase
+  } = await client
     .from("play_tables")
     .insert({
       code: tableCode,
@@ -225,10 +239,11 @@ async function createTable(name) {
 }
 
 async function createInvite(tableId) {
+  const client = requireSupabase();
   const {
     data,
     error,
-  } = await supabase
+  } = await client
     .from("table_invites")
     .insert({
       table_id: tableId,
@@ -246,9 +261,10 @@ async function createInvite(tableId) {
 }
 
 async function updatePlayerVoice(playerId, muted) {
+  const client = requireSupabase();
   const {
     error,
-  } = await supabase
+  } = await client
     .from("table_players")
     .update({
       muted,
@@ -261,13 +277,51 @@ async function updatePlayerVoice(playerId, muted) {
   }
 }
 
+async function deletePlayer(playerId) {
+  const client = requireSupabase();
+
+  const {
+    error: transactionsError,
+  } = await client
+    .from("wallet_transactions")
+    .delete()
+    .eq("player_id", playerId);
+
+  if (transactionsError) {
+    throw transactionsError;
+  }
+
+  const {
+    error: walletsError,
+  } = await client
+    .from("wallets")
+    .delete()
+    .eq("player_id", playerId);
+
+  if (walletsError) {
+    throw walletsError;
+  }
+
+  const {
+    error: playerError,
+  } = await client
+    .from("table_players")
+    .delete()
+    .eq("id", playerId);
+
+  if (playerError) {
+    throw playerError;
+  }
+}
+
 async function approvePlayerChips(playerId, tableId, amount) {
+  const client = requireSupabase();
   const chips =
     Math.max(0, Number(amount) || 0);
 
   const {
     error: playerError,
-  } = await supabase
+  } = await client
     .from("table_players")
     .update({
       status: "approved",
@@ -282,7 +336,7 @@ async function approvePlayerChips(playerId, tableId, amount) {
   let {
     data: wallet,
     error: walletError,
-  } = await supabase
+  } = await client
     .from("wallets")
     .select("id")
     .eq("player_id", playerId)
@@ -296,7 +350,7 @@ async function approvePlayerChips(playerId, tableId, amount) {
     const {
       data: createdWallet,
       error: createWalletError,
-    } = await supabase
+    } = await client
       .from("wallets")
       .insert({
         player_id: playerId,
@@ -315,7 +369,7 @@ async function approvePlayerChips(playerId, tableId, amount) {
 
   const {
     error: transactionError,
-  } = await supabase
+  } = await client
     .from("wallet_transactions")
     .insert({
       wallet_id: wallet.id,
@@ -334,10 +388,11 @@ async function approvePlayerChips(playerId, tableId, amount) {
 }
 
 async function findInvite(inviteCode) {
+  const client = requireSupabase();
   const {
     data,
     error,
-  } = await supabase
+  } = await client
     .from("table_invites")
     .select(`
       id,
@@ -369,10 +424,11 @@ async function claimInvite({
   tableId,
   displayName,
 }) {
+  const client = requireSupabase();
   const {
     data: player,
     error: playerError,
-  } = await supabase
+  } = await client
     .from("table_players")
     .insert({
       table_id: tableId,
@@ -392,7 +448,7 @@ async function claimInvite({
 
   const {
     error: inviteError,
-  } = await supabase
+  } = await client
     .from("table_invites")
     .update({
       status: "claimed",
@@ -413,6 +469,7 @@ export {
   createInvite,
   createInviteCode,
   createTable,
+  deletePlayer,
   fetchGameSnapshot,
   fetchTableById,
   fetchTables,

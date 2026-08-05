@@ -779,10 +779,11 @@ class PaseCasinoDemoRuntime {
     const result = this.diceEngine.rollDice();
     const resolution = this.resolver.resolve(result);
     const outcome = normalizeWinner(resolution.winner);
-    const point = resolution.point ?? this.resolver.getPoint();
+    const point = resolution.finished ?
+      null :
+      resolution.point ?? this.resolver.getPoint();
     const round = this.state.table.round;
     const isFirstShooterSuerte =
-      !pointBeforeRoll &&
       outcome === "SUERTE" &&
       resolution.finished &&
       (mainPotBeforeRoll.shooterWinCount ?? 0) === 0;
@@ -792,7 +793,7 @@ class PaseCasinoDemoRuntime {
       dice: `${result.dice[0]} + ${result.dice[1]}`,
       total: result.total,
       result: isFirstShooterSuerte ? "PRIMERA SUERTE" : outcome ?? "PUNTO",
-      point,
+      point: resolution.point ?? pointBeforeRoll,
     };
     const settled =
       this.settleQuickBets(outcome);
@@ -864,8 +865,9 @@ class PaseCasinoDemoRuntime {
       table: {
         ...this.state.table,
         phase: nextPhase,
+        rollingStartedAt: null,
         shooterId: kuloWon ? mainPot.shooterId : this.state.table.shooterId,
-        point: kuloWon ? null : point,
+        point,
         mainPot,
         betFeed: settled.betFeed,
         settlementFeed: settled.settlementFeed,

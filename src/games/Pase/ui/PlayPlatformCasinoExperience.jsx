@@ -798,14 +798,16 @@ function BottomBar({
           )}
         </div>
       )}
-      <button
-        type="button"
-        onClick={onRoll}
-        className="casino-action-button primary"
-        disabled={!canRollDice}
-      >
-        {rollLabel}
-      </button>
+      {currentPlayerId === table.shooterId && (
+        <button
+          type="button"
+          onClick={onRoll}
+          className="casino-action-button primary"
+          disabled={!canRollDice}
+        >
+          {rollLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -825,6 +827,7 @@ function PlayPlatformCasinoExperience() {
   const rollIntervalRef = useRef(null);
   const lastSnapshotSignatureRef = useRef("");
   const savingSnapshotRef = useRef(false);
+  const saveRequestIdRef = useRef(0);
   const [gameState, setGameState] = useState(runtime.getState());
   const [liveTable, setLiveTable] = useState(null);
   const [liveTableStatus, setLiveTableStatus] = useState(tableId ? "Cargando mesa..." : "");
@@ -874,6 +877,9 @@ function PlayPlatformCasinoExperience() {
     setGameState(syncedState);
 
     if (tableId && persist) {
+      const saveRequestId =
+        saveRequestIdRef.current + 1;
+      saveRequestIdRef.current = saveRequestId;
       const snapshotSignature =
         JSON.stringify(syncedState);
       lastSnapshotSignatureRef.current = snapshotSignature;
@@ -884,7 +890,9 @@ function PlayPlatformCasinoExperience() {
           setLiveTableStatus(`No se pudo sincronizar la mesa: ${error.message}`);
         })
         .finally(() => {
-          savingSnapshotRef.current = false;
+          if (saveRequestIdRef.current === saveRequestId) {
+            savingSnapshotRef.current = false;
+          }
         });
     }
   };
@@ -1051,6 +1059,23 @@ function PlayPlatformCasinoExperience() {
       return undefined;
     }
 
+    const staleRollingTimerId = window.setTimeout(() => {
+      setGameState((currentState) => {
+        if (currentState.table.phase !== "ROLLING_DICE") {
+          return currentState;
+        }
+
+        return {
+          ...currentState,
+          table: {
+            ...currentState.table,
+            phase: "WAITING_ROLL",
+            rollingStartedAt: null,
+          },
+        };
+      });
+    }, 10000);
+
     rollIntervalRef.current = setInterval(() => {
       setRollingDice([
         Math.floor(Math.random() * 6) + 1,
@@ -1058,7 +1083,10 @@ function PlayPlatformCasinoExperience() {
       ]);
     }, 70);
 
-    return () => clearInterval(rollIntervalRef.current);
+    return () => {
+      window.clearTimeout(staleRollingTimerId);
+      clearInterval(rollIntervalRef.current);
+    };
   }, [isRolling, remoteRolling]);
 
   useEffect(() => {
@@ -1114,6 +1142,7 @@ function PlayPlatformCasinoExperience() {
       table: {
         ...rollingState.table,
         phase: "ROLLING_DICE",
+        rollingStartedAt: Date.now(),
       },
       dice: {
         values: [],

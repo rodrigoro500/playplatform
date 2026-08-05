@@ -18,6 +18,8 @@ class PaseResolver {
 
   resolveFirstRoll(total) {
     if (this.rules.isInitialSuerteWin(total)) {
+      this.clearPoint();
+
       return {
         finished: true,
         winner: "SUERTE",
@@ -26,6 +28,8 @@ class PaseResolver {
     }
 
     if (this.rules.isInitialMalaWin(total)) {
+      this.clearPoint();
+
       return {
         finished: true,
         winner: "KULO",
@@ -43,38 +47,38 @@ class PaseResolver {
       };
     }
 
-    throw new Error(`Total inválido: ${total}`);
- }
+    throw new Error(`Total invalido: ${total}`);
+  }
 
-resolvePointRoll(total) {
-  const activePoint = this.point;
+  resolvePointRoll(total) {
+    const activePoint = this.point;
 
-  if (this.rules.isPointWin(total, activePoint)) {
-    this.clearPoint();
+    if (this.rules.isPointWin(total, activePoint)) {
+      this.clearPoint();
+
+      return {
+        finished: true,
+        winner: "SUERTE",
+        point: activePoint,
+      };
+    }
+
+    if (this.rules.isSevenOut(total)) {
+      this.clearPoint();
+
+      return {
+        finished: true,
+        winner: "KULO",
+        point: activePoint,
+      };
+    }
 
     return {
-      finished: true,
-      winner: "SUERTE",
+      finished: false,
+      winner: null,
       point: activePoint,
     };
   }
-
-  if (total === 7) {
-    this.clearPoint();
-
-    return {
-      finished: true,
-      winner: "KULO",
-      point: activePoint,
-    };
-  }
-
-  return {
-    finished: false,
-    winner: null,
-    point: activePoint,
-  };
-}
 
   hasPoint() {
     return this.point !== null;
