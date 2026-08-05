@@ -81,6 +81,7 @@ function createInitialState(sourcePlayers = initialPlayers, tableInfo = {}) {
       currentBet: null,
       betFeed: [],
       settlementFeed: [],
+      chatMessages: [],
     },
     players: createPlayers(shooterId, sourcePlayers),
     dice: {

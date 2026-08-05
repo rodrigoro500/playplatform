@@ -227,6 +227,7 @@ function LeftPanel({
   currentPlayer,
   players,
   isLivePlayer,
+  chatMessages,
   selectedBet,
   selectedAmount,
   quickBetPhase,
@@ -235,6 +236,7 @@ function LeftPanel({
   onSelectBet,
   onSelectAmount,
   onConfirmBet,
+  onSendChatMessage,
 }) {
   const quickAmounts = [1000, 5000, 10000, 50000, 100000];
   const quickBetOpen =
@@ -323,6 +325,8 @@ function LeftPanel({
         currentPlayer={currentPlayer}
         players={players}
         isLivePlayer={isLivePlayer}
+        messages={chatMessages}
+        onSendMessage={onSendChatMessage}
       />
     </aside>
   );
@@ -466,8 +470,31 @@ function ChatPanel({
   currentPlayer,
   players,
   isLivePlayer,
+  messages,
+  onSendMessage,
 }) {
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const visibleMessages =
+    messages.length > 0 ?
+      messages :
+      chatMessages.map(([name, message, time]) => ({
+        id: `${name}-${time}`,
+        name,
+        message,
+        time,
+      }));
+  const canSend =
+    draft.trim().length > 0 && Boolean(currentPlayer);
+
+  const submitMessage = () => {
+    if (!canSend) {
+      return;
+    }
+
+    onSendMessage(draft.trim());
+    setDraft("");
+  };
 
   return (
     <Panel>
@@ -487,8 +514,8 @@ function ChatPanel({
       {open && (
         <>
           <div className="casino-chat-list">
-            {chatMessages.map(([name, message, time]) => (
-              <div key={`${name}-${time}`} className="casino-chat-row">
+            {visibleMessages.map(({ id, name, message, time }) => (
+              <div key={id} className="casino-chat-row">
                 <div className="casino-chat-avatar">{name.slice(0, 2).toUpperCase()}</div>
                 <div>
                   <div className="casino-chat-name">{name}</div>
@@ -503,11 +530,23 @@ function ChatPanel({
               type="text"
               className="casino-chat-input"
               placeholder="Escribe en la mesa..."
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  submitMessage();
+                }
+              }}
             />
             <button type="button" className="casino-chat-voice">
               Voz
             </button>
-            <button type="button" className="casino-chat-send">
+            <button
+              type="button"
+              className="casino-chat-send"
+              onClick={submitMessage}
+              disabled={!canSend}
+            >
               Enviar
             </button>
           </div>
@@ -1020,6 +1059,8 @@ function PlayPlatformCasinoExperience() {
     !isLivePlayer ||
     currentPlayerId === table.shooterId;
   const phase = phaseLabels[table.phase] ?? table.phase;
+  const chatMessagesForTable =
+    table.chatMessages ?? [];
   const updateState = (nextState, {
     persist = true,
   } = {}) => {
@@ -1352,6 +1393,36 @@ function PlayPlatformCasinoExperience() {
     }));
   };
 
+  const sendChatMessage = (message) => {
+    if (!accountPlayer || !message.trim()) {
+      return;
+    }
+
+    const now = new Date();
+    const nextMessage = {
+      id: crypto.randomUUID(),
+      playerId: accountPlayer.id,
+      name: accountPlayer.name,
+      message: message.trim(),
+      time: now.toLocaleTimeString("es-PY", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      createdAt: now.toISOString(),
+    };
+
+    updateState({
+      ...gameState,
+      table: {
+        ...gameState.table,
+        chatMessages: [
+          nextMessage,
+          ...(gameState.table.chatMessages ?? []),
+        ].slice(0, 30),
+      },
+    });
+  };
+
   const startTableRound = () => {
     if (players.length === 0) {
       return;
@@ -1458,6 +1529,7 @@ function PlayPlatformCasinoExperience() {
             currentPlayer={accountPlayer}
             players={players}
             isLivePlayer={isLivePlayer}
+            chatMessages={chatMessagesForTable}
             selectedBet={selectedBet}
             selectedAmount={selectedAmount}
             quickBetPhase={quickBetPhase}
@@ -1466,6 +1538,7 @@ function PlayPlatformCasinoExperience() {
             onSelectBet={setSelectedBet}
             onSelectAmount={setSelectedAmount}
             onConfirmBet={confirmQuickBet}
+            onSendChatMessage={sendChatMessage}
           />
           <div className="casino-center-frame">
             <GameTable

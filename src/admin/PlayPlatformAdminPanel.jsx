@@ -17,9 +17,24 @@ import {
 } from "../lib/playPlatformDataService";
 import "./PlayPlatformAdminPanel.css";
 
+function getPublicAppOrigin() {
+  const configuredOrigin =
+    import.meta.env.VITE_PUBLIC_APP_URL;
+
+  if (configuredOrigin) {
+    return configuredOrigin.replace(/\/$/, "");
+  }
+
+  if (window.location.hostname === "localhost") {
+    return window.location.origin;
+  }
+
+  return "https://playplatform.vercel.app";
+}
+
 function createWhatsappLink(inviteCode) {
   const inviteLink =
-    `${window.location.origin}/join?invite=${inviteCode}`;
+    `${getPublicAppOrigin()}/join?invite=${inviteCode}`;
   const message =
     `Te invito a la mesa de PASE en PlayPlatform: ${inviteLink}`;
 
@@ -27,7 +42,7 @@ function createWhatsappLink(inviteCode) {
 }
 
 function createTableLink(tableId) {
-  return tableId ? `/?table=${tableId}` : "/";
+  return tableId ? `${getPublicAppOrigin()}/?table=${tableId}` : "/";
 }
 
 function getStatusLabel(status) {
