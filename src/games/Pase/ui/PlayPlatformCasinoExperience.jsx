@@ -107,7 +107,9 @@ function syncStatePlayersWithLiveRoster(currentState, runtimePlayers) {
       const currentPlayer =
         currentPlayersById.get(livePlayer.id);
       const wallet =
-        Math.max(currentPlayer?.wallet ?? 0, livePlayer.wallet ?? 0);
+        typeof currentPlayer?.wallet === "number" ?
+          currentPlayer.wallet :
+          livePlayer.wallet ?? 0;
 
       return {
         ...currentPlayer,
