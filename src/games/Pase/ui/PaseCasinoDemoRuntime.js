@@ -23,7 +23,19 @@ function normalizeWinner(winner) {
 }
 
 function createCoverageQueue(shooterId, sourcePlayers = initialPlayers) {
+  if (sourcePlayers.length === 0) {
+    return [];
+  }
+
+  const shooterIndex =
+    sourcePlayers.findIndex((player) => player.id === shooterId);
+
+  if (shooterIndex < 0) {
+    return sourcePlayers.map((player) => player.id);
+  }
+
   return sourcePlayers
+    .map((_, offset) => sourcePlayers[(shooterIndex + offset + 1) % sourcePlayers.length])
     .filter((player) => player.id !== shooterId)
     .map((player) => player.id);
 }
