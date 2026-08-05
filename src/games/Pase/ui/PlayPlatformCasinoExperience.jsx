@@ -341,6 +341,7 @@ function RemoteAudio({
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.srcObject = participant.stream;
+      audioRef.current.play?.().catch(() => {});
     }
   }, [participant.stream]);
 

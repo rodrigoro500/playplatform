@@ -124,6 +124,23 @@ function useTableVoice({
     });
   }, [player, roomId]);
 
+  const getRemoteClientsFromPresence = useCallback(() => {
+    const presenceState =
+      channelRef.current?.presenceState?.() ?? {};
+
+    return Object.values(presenceState)
+      .flat()
+      .filter((presence) => (
+        presence.clientId &&
+        presence.clientId !== clientIdRef.current
+      ))
+      .map((presence) => ({
+        clientId: presence.clientId,
+        playerId: presence.playerId,
+        playerName: presence.playerName,
+      }));
+  }, []);
+
   const closePeer = useCallback((clientId) => {
     const peer = peersRef.current.get(clientId);
 
@@ -199,6 +216,11 @@ function useTableVoice({
 
   const createOfferFor = useCallback(async (remoteClient) => {
     const pc = ensurePeer(remoteClient);
+
+    if (pc.signalingState !== "stable") {
+      return;
+    }
+
     const offer = await pc.createOffer();
 
     await pc.setLocalDescription(offer);
@@ -208,6 +230,38 @@ function useTableVoice({
       sdp: offer,
     });
   }, [ensurePeer, sendSignal]);
+
+  const syncPresencePeers = useCallback(async () => {
+    const remoteClients =
+      getRemoteClientsFromPresence();
+    const remoteClientIds =
+      new Set(remoteClients.map((remoteClient) => remoteClient.clientId));
+
+    peersRef.current.forEach((peer, clientId) => {
+      if (!remoteClientIds.has(clientId)) {
+        peer.pc.close();
+        peersRef.current.delete(clientId);
+        removeParticipant(clientId);
+      }
+    });
+
+    await Promise.all(remoteClients.map(async (remoteClient) => {
+      updateParticipant(remoteClient.clientId, {
+        playerId: remoteClient.playerId,
+        name: remoteClient.playerName,
+      });
+
+      if (clientIdRef.current < remoteClient.clientId) {
+        await createOfferFor(remoteClient);
+      }
+    }));
+
+    if (remoteClients.length === 0) {
+      setStatus("Voz conectada. Esperando otros jugadores...");
+    } else {
+      setStatus(`Voz conectada con ${remoteClients.length} jugador(es).`);
+    }
+  }, [createOfferFor, getRemoteClientsFromPresence, removeParticipant, updateParticipant]);
 
   const handleSignal = useCallback(async ({
     payload,
@@ -229,7 +283,10 @@ function useTableVoice({
 
     try {
       if (payload.type === "join") {
-        await createOfferFor(remoteClient);
+        updateParticipant(payload.from, {
+          playerId: payload.playerId,
+          name: payload.playerName,
+        });
         return;
       }
 
@@ -263,7 +320,7 @@ function useTableVoice({
     } catch (error) {
       setStatus(`Voz: ${formatVoiceError(error)}`);
     }
-  }, [closePeer, createOfferFor, ensurePeer, roomId, sendSignal]);
+  }, [closePeer, ensurePeer, roomId, sendSignal, updateParticipant]);
 
   const leaveVoice = useCallback(async () => {
     await sendSignal({
@@ -329,23 +386,49 @@ function useTableVoice({
               ack: true,
               self: false,
             },
+            presence: {
+              key: clientIdRef.current,
+            },
           },
         });
+
+      channelRef.current = channel;
 
       channel.on("broadcast", {
         event: "voice-signal",
       }, handleSignal);
+
+      channel.on("presence", {
+        event: "sync",
+      }, () => {
+        syncPresencePeers();
+      });
+
+      channel.on("presence", {
+        event: "leave",
+      }, ({
+        leftPresences,
+      }) => {
+        leftPresences?.forEach((presence) => {
+          closePeer(presence.clientId);
+        });
+      });
 
       channel.subscribe(async (subscribeStatus) => {
         if (subscribeStatus !== "SUBSCRIBED") {
           return;
         }
 
-        channelRef.current = channel;
+        await channel.track({
+          clientId: clientIdRef.current,
+          playerId: player.id,
+          playerName: player.name,
+          joinedAt: new Date().toISOString(),
+        });
         setConnected(true);
         setConnecting(false);
         setMicEnabled(true);
-        setStatus("Voz conectada.");
+        setStatus("Voz conectada. Buscando jugadores...");
         await sendSignal({
           type: "join",
         });
@@ -354,7 +437,7 @@ function useTableVoice({
       setConnecting(false);
       setStatus(formatVoiceError(error));
     }
-  }, [connected, connecting, handleSignal, player, roomId, sendSignal]);
+  }, [closePeer, connected, connecting, handleSignal, player, roomId, sendSignal, syncPresencePeers]);
 
   const toggleMic = useCallback(() => {
     if (player?.muted) {
