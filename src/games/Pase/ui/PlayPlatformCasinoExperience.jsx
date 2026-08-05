@@ -91,6 +91,81 @@ function mergeAdminWalletLoads(currentState, runtimePlayers) {
   } : currentState;
 }
 
+function syncStatePlayersWithLiveRoster(currentState, runtimePlayers) {
+  const livePlayerIds =
+    new Set(runtimePlayers.map((player) => player.id));
+  const currentPlayersById =
+    new Map(currentState.players.map((player) => [player.id, player]));
+  const currentShooterId =
+    currentState.table.shooterId;
+  const nextShooterId =
+    livePlayerIds.has(currentShooterId) ?
+      currentShooterId :
+      runtimePlayers[0]?.id ?? null;
+  const players =
+    runtimePlayers.map((livePlayer, index) => {
+      const currentPlayer =
+        currentPlayersById.get(livePlayer.id);
+      const wallet =
+        Math.max(currentPlayer?.wallet ?? 0, livePlayer.wallet ?? 0);
+
+      return {
+        ...currentPlayer,
+        id: livePlayer.id,
+        name: livePlayer.name,
+        wallet,
+        seat: index + 1,
+        connected: true,
+        isShooter: livePlayer.id === nextShooterId,
+        formattedWallet: formatMoney(wallet),
+      };
+    });
+  const playersChanged =
+    currentState.players.length !== players.length ||
+    currentState.players.some((player, index) => player.id !== players[index]?.id) ||
+    currentState.players.some((player) => !livePlayerIds.has(player.id));
+  const walletsChanged =
+    players.some((player) => currentPlayersById.get(player.id)?.wallet !== player.wallet);
+
+  if (!playersChanged && !walletsChanged && currentShooterId === nextShooterId) {
+    return currentState;
+  }
+
+  const filterLivePlayerIds = (playerIds = []) => (
+    playerIds.filter((playerId) => livePlayerIds.has(playerId) && playerId !== nextShooterId)
+  );
+  const mainPot =
+    currentState.table.mainPot;
+  const coverageQueue =
+    filterLivePlayerIds(mainPot.coverageQueue);
+  const promptedCoverPlayerId =
+    livePlayerIds.has(mainPot.promptedCoverPlayerId) ?
+      mainPot.promptedCoverPlayerId :
+      coverageQueue[0] ?? null;
+
+  return {
+    ...currentState,
+    players,
+    table: {
+      ...currentState.table,
+      shooterId: nextShooterId,
+      mainPot: {
+        ...mainPot,
+        shooterId: nextShooterId,
+        coverPlayerId: livePlayerIds.has(mainPot.coverPlayerId) ? mainPot.coverPlayerId : null,
+        promptedCoverPlayerId,
+        coverageQueue,
+        declinedCoverPlayerIds: filterLivePlayerIds(mainPot.declinedCoverPlayerIds),
+        coverageLog: (mainPot.coverageLog ?? []).filter((item) => livePlayerIds.has(item.playerId)),
+      },
+      betFeed: (currentState.table.betFeed ?? []).filter((bet) => livePlayerIds.has(bet.playerId)),
+      currentBet: livePlayerIds.has(currentState.table.currentBet?.playerId) ?
+        currentState.table.currentBet :
+        null,
+    },
+  };
+}
+
 function Die({
   value,
   rolling = false,
@@ -1022,6 +1097,7 @@ function PlayPlatformCasinoExperience() {
   const lastSnapshotSignatureRef = useRef("");
   const savingSnapshotRef = useRef(false);
   const saveRequestIdRef = useRef(0);
+  const liveRuntimePlayersRef = useRef([]);
   const [gameState, setGameState] = useState(runtime.getState());
   const [liveTable, setLiveTable] = useState(null);
   const [liveTableStatus, setLiveTableStatus] = useState(tableId ? "Cargando mesa..." : "");
@@ -1119,6 +1195,7 @@ function PlayPlatformCasinoExperience() {
             .sort((left, right) => (left.seatNumber ?? 99) - (right.seatNumber ?? 99));
         const runtimePlayers =
           approvedPlayers.map(mapLivePlayerToRuntimePlayer);
+        liveRuntimePlayersRef.current = runtimePlayers;
         const firstPlayerId =
           runtimePlayers[0]?.id ?? "";
         const selectedLivePlayerId =
@@ -1157,7 +1234,10 @@ function PlayPlatformCasinoExperience() {
           setGameState({ ...runtimeRef.current.getState() });
         } else if (currentState.table.running && !savingSnapshotRef.current) {
           const mergedState =
-            mergeAdminWalletLoads(currentState, runtimePlayers);
+            syncStatePlayersWithLiveRoster(
+              mergeAdminWalletLoads(currentState, runtimePlayers),
+              runtimePlayers
+            );
 
           if (mergedState !== currentState) {
             updateState(mergedState);
@@ -1212,13 +1292,23 @@ function PlayPlatformCasinoExperience() {
           return;
         }
 
-        lastSnapshotSignatureRef.current = snapshotSignature;
-        runtimeRef.current.hydrateState(snapshot.state);
-        setSelectedShooter(snapshot.state.table?.shooterId ?? "");
-        setCoverAmount(snapshot.state.table?.mainPot?.requiredCover || mainPotAmount);
+        const syncedSnapshotState =
+          liveRuntimePlayersRef.current.length > 0 ?
+            syncStatePlayersWithLiveRoster(snapshot.state, liveRuntimePlayersRef.current) :
+            snapshot.state;
+
+        lastSnapshotSignatureRef.current =
+          JSON.stringify(syncedSnapshotState);
+        runtimeRef.current.hydrateState(syncedSnapshotState);
+        setSelectedShooter(syncedSnapshotState.table?.shooterId ?? "");
+        setCoverAmount(syncedSnapshotState.table?.mainPot?.requiredCover || mainPotAmount);
         setGameState({
-          ...snapshot.state,
+          ...syncedSnapshotState,
         });
+
+        if (syncedSnapshotState !== snapshot.state) {
+          updateState(syncedSnapshotState);
+        }
       } catch (error) {
         if (isMounted) {
           setLiveTableStatus(`No se pudo actualizar la mesa: ${error.message}`);
