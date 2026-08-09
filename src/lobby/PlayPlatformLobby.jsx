@@ -50,6 +50,27 @@ const games = [
   },
 ];
 
+const spanishDeck = {
+  image: "/assets/baraja-espanola.svg",
+  width: 2496,
+  height: 1595,
+  cardWidth: 207,
+  cardHeight: 318,
+};
+
+const spanishCards = {
+  "7_ORO": { x: 1248, y: 1 },
+  "2_COPA": { x: 208, y: 320 },
+  "6_ESPADA": { x: 1040, y: 638 },
+  "3_BASTO": { x: 416, y: 957 },
+  "5_COPA": { x: 832, y: 320 },
+  "4_ORO": { x: 624, y: 1 },
+  "11_ORO": { x: 2080, y: 1 },
+  "10_ORO": { x: 1872, y: 1 },
+  "6_ORO": { x: 1040, y: 1 },
+  "5_ORO": { x: 832, y: 1 },
+};
+
 function getGameIdFromPath() {
   const match =
     window.location.pathname.match(/^\/games\/([^/]+)/);
@@ -75,15 +96,28 @@ function getTableStatusLabel(status) {
   return labels[status] ?? status ?? "Lista";
 }
 
-function SpanishCard({
-  value,
-  suit = "ORO",
+function RealSpanishCard({
+  card,
+  tilt = 0,
+  lift = 0,
 }) {
+  const source =
+    spanishCards[card] ?? spanishCards["7_ORO"];
+  const scale = 0.35;
+
   return (
-    <div className="spanish-card">
-      <span>{value}</span>
-      <strong>{suit}</strong>
-      <small>{value}</small>
+    <div
+      className="real-spanish-card"
+      style={{
+        width: spanishDeck.cardWidth * scale,
+        height: spanishDeck.cardHeight * scale,
+        backgroundImage: `url(${spanishDeck.image})`,
+        backgroundSize: `${spanishDeck.width * scale}px ${spanishDeck.height * scale}px`,
+        backgroundPosition: `-${source.x * scale}px -${source.y * scale}px`,
+        transform: `rotate(${tilt}deg) translateY(${lift}px)`,
+      }}
+    >
+      <span className="sr-only">{card}</span>
     </div>
   );
 }
@@ -105,26 +139,34 @@ function MakaiArtwork() {
   return (
     <div className="game-art game-art-cards makai-cards">
       <div className="makai-pair">
-        <SpanishCard value="7" suit="ORO" />
-        <SpanishCard value="2" suit="COPA" />
+        <RealSpanishCard card="7_ORO" tilt={-8} />
+        <RealSpanishCard card="2_COPA" tilt={8} />
       </div>
       <div className="makai-pair">
-        <SpanishCard value="6" suit="ESP" />
-        <SpanishCard value="3" suit="BASTO" />
+        <RealSpanishCard card="6_ESPADA" tilt={-8} />
+        <RealSpanishCard card="3_BASTO" tilt={8} />
       </div>
       <div className="makai-pair">
-        <SpanishCard value="5" suit="COPA" />
-        <SpanishCard value="4" suit="ORO" />
+        <RealSpanishCard card="5_COPA" tilt={-8} />
+        <RealSpanishCard card="4_ORO" tilt={8} />
       </div>
     </div>
   );
 }
 
 function BojoArtwork() {
+  const bojoCards = [
+    ["11_ORO", -18, 16],
+    ["10_ORO", -9, 6],
+    ["7_ORO", 0, 0],
+    ["6_ORO", 9, 6],
+    ["5_ORO", 18, 16],
+  ];
+
   return (
     <div className="game-art game-art-cards bojo-cards">
-      {["11", "10", "7", "6", "5"].map((value) => (
-        <SpanishCard key={value} value={value} suit="ORO" />
+      {bojoCards.map(([card, tilt, lift]) => (
+        <RealSpanishCard key={card} card={card} tilt={tilt} lift={lift} />
       ))}
     </div>
   );
@@ -133,20 +175,32 @@ function BojoArtwork() {
 function BingoArtwork() {
   return (
     <div className="game-art game-art-bingo">
-      {["B7", "I18", "N33", "G48", "O72"].map((ball) => (
-        <span key={ball}>{ball}</span>
+      {["B 7", "I 18", "N 33", "G 48", "O 72"].map((ball, index) => (
+        <span key={ball} className={`bingo-ball ball-${index}`}>
+          <strong>{ball.split(" ")[0]}</strong>
+          <em>{ball.split(" ")[1]}</em>
+        </span>
       ))}
     </div>
   );
 }
 
 function PokerArtwork() {
+  const pokerCards = [
+    ["A", "spade"],
+    ["K", "heart"],
+    ["Q", "diamond"],
+    ["J", "club"],
+    ["10", "spade"],
+  ];
+
   return (
     <div className="game-art game-art-poker">
-      {["A", "K", "Q", "J", "10"].map((value, index) => (
-        <div key={value} className={`poker-card card-${index}`}>
+      {pokerCards.map(([value, suit], index) => (
+        <div key={`${value}-${suit}`} className={`poker-card card-${index} suit-${suit}`}>
           <span>{value}</span>
-          <strong>PLAY</strong>
+          <strong>{suit === "spade" ? "♠" : suit === "heart" ? "♥" : suit === "diamond" ? "♦" : "♣"}</strong>
+          <small>{value}</small>
         </div>
       ))}
     </div>
@@ -359,6 +413,10 @@ function PlayPlatformLobby() {
           </section>
           </section>
         )}
+
+        <p className="lobby-asset-credit">
+          Baraja espanola: Germarquezm, CC BY-SA 3.0, via Wikimedia Commons.
+        </p>
       </section>
     </main>
   );
