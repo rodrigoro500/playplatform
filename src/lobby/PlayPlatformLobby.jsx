@@ -65,7 +65,7 @@ const spanishCards = {
   "3_BASTO": { x: 416, y: 957 },
   "5_COPA": { x: 832, y: 320 },
   "4_ORO": { x: 624, y: 1 },
-  "11_ORO": { x: 2288, y: 1 },
+  "11_ORO": { x: 1872, y: 1 },
   "10_ORO": { x: 1872, y: 1 },
   "6_ORO": { x: 1040, y: 1 },
   "5_ORO": { x: 832, y: 1 },
@@ -98,6 +98,7 @@ function getTableStatusLabel(status) {
 
 function RealSpanishCard({
   card,
+  label,
   tilt = 0,
   lift = 0,
 }) {
@@ -118,6 +119,12 @@ function RealSpanishCard({
       }}
     >
       <span className="sr-only">{card}</span>
+      {label && (
+        <>
+          <span className="real-spanish-card-label top">{label}</span>
+          <span className="real-spanish-card-label bottom">{label}</span>
+        </>
+      )}
     </div>
   );
 }
@@ -156,17 +163,17 @@ function MakaiArtwork() {
 
 function BojoArtwork() {
   const bojoCards = [
-    ["11_ORO", -18, 16],
-    ["10_ORO", -9, 6],
-    ["7_ORO", 0, 0],
-    ["6_ORO", 9, 6],
-    ["5_ORO", 18, 16],
+    ["11_ORO", "11", -18, 16],
+    ["10_ORO", null, -9, 6],
+    ["7_ORO", null, 0, 0],
+    ["6_ORO", null, 9, 6],
+    ["5_ORO", null, 18, 16],
   ];
 
   return (
     <div className="game-art game-art-cards bojo-cards">
-      {bojoCards.map(([card, tilt, lift]) => (
-        <RealSpanishCard key={card} card={card} tilt={tilt} lift={lift} />
+      {bojoCards.map(([card, label, tilt, lift]) => (
+        <RealSpanishCard key={`${card}-${label ?? "native"}`} card={card} label={label} tilt={tilt} lift={lift} />
       ))}
     </div>
   );

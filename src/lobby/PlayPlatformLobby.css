@@ -299,6 +299,7 @@
 }
 
 .real-spanish-card {
+  position: relative;
   flex: 0 0 auto;
   border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 7px;
@@ -307,6 +308,31 @@
     0 18px 30px rgba(0, 0, 0, 0.44),
     0 0 0 1px rgba(15, 23, 42, 0.18);
   transform-origin: 50% 88%;
+}
+
+.real-spanish-card-label {
+  position: absolute;
+  display: grid;
+  min-width: 15px;
+  place-items: center;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111827;
+  font-family: Georgia, serif;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.real-spanish-card-label.top {
+  left: 4px;
+  top: 4px;
+}
+
+.real-spanish-card-label.bottom {
+  right: 4px;
+  bottom: 4px;
+  transform: rotate(180deg);
 }
 
 .makai-cards {
