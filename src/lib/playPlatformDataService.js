@@ -35,6 +35,8 @@ function mapTable(row) {
     minPot: row.min_main_pot,
     players: (row.table_players ?? []).map(mapPlayer),
     invites: row.table_invites ?? [],
+    transactions: row.transactions ?? [],
+    gameSnapshot: row.gameSnapshot ?? null,
   };
 }
 
@@ -89,7 +91,55 @@ async function fetchTables() {
     throw error;
   }
 
-  return (data ?? []).map(mapTable);
+  const tables =
+    (data ?? []).map(mapTable);
+  const tableIds =
+    tables.map((table) => table.id);
+
+  if (tableIds.length === 0) {
+    return tables;
+  }
+
+  const {
+    data: transactions,
+    error: transactionsError,
+  } = await client
+    .from("wallet_transactions")
+    .select("table_id, player_id, amount, transaction_type, reference_type")
+    .in("table_id", tableIds);
+
+  if (transactionsError) {
+    throw transactionsError;
+  }
+
+  const {
+    data: snapshots,
+    error: snapshotsError,
+  } = await client
+    .from("game_snapshots")
+    .select("table_id, state, updated_at")
+    .in("table_id", tableIds);
+
+  if (snapshotsError) {
+    throw snapshotsError;
+  }
+
+  const transactionsByTable =
+    new Map();
+  (transactions ?? []).forEach((transaction) => {
+    const tableTransactions =
+      transactionsByTable.get(transaction.table_id) ?? [];
+    tableTransactions.push(transaction);
+    transactionsByTable.set(transaction.table_id, tableTransactions);
+  });
+  const snapshotsByTable =
+    new Map((snapshots ?? []).map((snapshot) => [snapshot.table_id, snapshot]));
+
+  return tables.map((table) => ({
+    ...table,
+    transactions: transactionsByTable.get(table.id) ?? [],
+    gameSnapshot: snapshotsByTable.get(table.id)?.state ?? null,
+  }));
 }
 
 async function fetchTableById(tableId) {

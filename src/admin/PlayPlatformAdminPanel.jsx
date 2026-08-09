@@ -59,6 +59,75 @@ function getStatusLabel(status) {
   return labels[status] ?? status;
 }
 
+function sumWalletCredits(transactions = []) {
+  return transactions
+    .filter((transaction) => (
+      transaction.transaction_type === "credit" &&
+      transaction.reference_type === "admin_chip_load"
+    ))
+    .reduce((total, transaction) => total + (Number(transaction.amount) || 0), 0);
+}
+
+function sumCommissionTransactions(transactions = []) {
+  return transactions
+    .filter((transaction) => (
+      transaction.transaction_type === "commission" ||
+      transaction.reference_type === "commission" ||
+      transaction.reference_type === "table_commission"
+    ))
+    .reduce((total, transaction) => total + Math.abs(Number(transaction.amount) || 0), 0);
+}
+
+function getActiveQuickBetTotal(snapshot) {
+  return (snapshot?.table?.betFeed ?? [])
+    .filter((bet) => bet.status === "CONFIRMADA")
+    .reduce((total, bet) => total + (Number(bet.amount) || 0), 0);
+}
+
+function getActiveMainPotTotal(snapshot) {
+  const mainPot =
+    snapshot?.table?.mainPot;
+
+  if (!mainPot || mainPot.status === "ESPERANDO_TIRADOR" || mainPot.status === "PREGUNTAR_TIRADOR") {
+    return 0;
+  }
+
+  return Number(mainPot.total) || 0;
+}
+
+function buildChipAudit(table, freeChips) {
+  const transactions =
+    table?.transactions ?? [];
+  const snapshot =
+    table?.gameSnapshot ?? null;
+  const loadedChips =
+    sumWalletCredits(transactions);
+  const commissionChips =
+    sumCommissionTransactions(transactions);
+  const lockedMainPot =
+    getActiveMainPotTotal(snapshot);
+  const lockedQuickBets =
+    getActiveQuickBetTotal(snapshot);
+  const lockedChips =
+    lockedMainPot + lockedQuickBets;
+  const auditedChips =
+    freeChips + lockedChips + commissionChips;
+  const difference =
+    auditedChips - loadedChips;
+
+  return {
+    auditedChips,
+    commissionChips,
+    difference,
+    freeChips,
+    loadedChips,
+    lockedChips,
+    lockedMainPot,
+    lockedQuickBets,
+    ok: Math.abs(difference) === 0,
+  };
+}
+
 function PlayPlatformAdminPanel() {
   const [tables, setTables] = useState([]);
   const [selectedTableId, setSelectedTableId] = useState(null);
@@ -80,6 +149,8 @@ function PlayPlatformAdminPanel() {
       (total, player) => total + player.chips,
       0
     ), [selectedTable?.players]);
+  const chipAudit =
+    useMemo(() => buildChipAudit(selectedTable, totalChips), [selectedTable, totalChips]);
 
   const loadTables = async ({
     silent = false,
@@ -282,13 +353,47 @@ function PlayPlatformAdminPanel() {
                 <strong>{approvedPlayers.length}</strong>
               </div>
               <div>
-                <span>Fichas cargadas</span>
+                <span>Saldos libres</span>
                 <strong>{formatMoney(totalChips)} Gs</strong>
               </div>
               <div>
                 <span>Pozo minimo</span>
                 <strong>{formatMoney(selectedTable?.minPot ?? 20000)} Gs</strong>
               </div>
+            </div>
+
+            <div className={`admin-chip-audit ${chipAudit.ok ? "is-ok" : "is-error"}`}>
+              <div className="admin-chip-audit-head">
+                <div>
+                  <span>Control de fichas</span>
+                  <strong>{chipAudit.ok ? "Mesa cuadrada" : "Diferencia detectada"}</strong>
+                </div>
+                <strong className={chipAudit.difference === 0 ? "" : "is-different"}>
+                  {chipAudit.difference > 0 ? "+" : ""}
+                  {formatMoney(chipAudit.difference)} Gs
+                </strong>
+              </div>
+              <div className="admin-chip-audit-grid">
+                <div>
+                  <span>Cargadas por Admin</span>
+                  <strong>{formatMoney(chipAudit.loadedChips)} Gs</strong>
+                </div>
+                <div>
+                  <span>Saldos libres</span>
+                  <strong>{formatMoney(chipAudit.freeChips)} Gs</strong>
+                </div>
+                <div>
+                  <span>En juego</span>
+                  <strong>{formatMoney(chipAudit.lockedChips)} Gs</strong>
+                </div>
+                <div>
+                  <span>Comisiones</span>
+                  <strong>{formatMoney(chipAudit.commissionChips)} Gs</strong>
+                </div>
+              </div>
+              <p>
+                En juego: pozo {formatMoney(chipAudit.lockedMainPot)} Gs + jugadas rapidas {formatMoney(chipAudit.lockedQuickBets)} Gs.
+              </p>
             </div>
 
             <div className="admin-card">
