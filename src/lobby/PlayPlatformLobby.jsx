@@ -18,32 +18,48 @@ const games = [
     name: "PASE",
     status: "Disponible",
     description: "Mesas activas con pozo, punto, MONO y voz en vivo.",
+    accent: "green",
   },
   {
     id: "MAKAI",
     name: "MAKAI",
     status: "Proximamente",
-    description: "Nuevo juego en preparacion.",
+    description: "Cartas españolas donde la suma nueve manda.",
+    accent: "gold",
   },
   {
     id: "BOJO",
     name: "BOJO",
     status: "Proximamente",
-    description: "Nuevo juego en preparacion.",
+    description: "Cinco cartas del mismo palo: 11, 10, 7, 6 y 5.",
+    accent: "red",
   },
   {
     id: "BINGO",
     name: "BINGO",
     status: "Proximamente",
     description: "Salas de bingo para proximas versiones.",
+    accent: "blue",
   },
   {
     id: "POKER",
     name: "POKER",
     status: "Proximamente",
     description: "Mesas de poker para proximas versiones.",
+    accent: "violet",
   },
 ];
+
+function getGameIdFromPath() {
+  const match =
+    window.location.pathname.match(/^\/games\/([^/]+)/);
+
+  return match?.[1]?.toUpperCase() ?? null;
+}
+
+function createGameLink(gameId) {
+  return `/games/${gameId.toLowerCase()}`;
+}
 
 function createTableLink(tableId) {
   return tableId ? `/?table=${tableId}` : "/";
@@ -59,13 +75,114 @@ function getTableStatusLabel(status) {
   return labels[status] ?? status ?? "Lista";
 }
 
+function SpanishCard({
+  value,
+  suit = "ORO",
+}) {
+  return (
+    <div className="spanish-card">
+      <span>{value}</span>
+      <strong>{suit}</strong>
+      <small>{value}</small>
+    </div>
+  );
+}
+
+function PaseArtwork() {
+  return (
+    <div className="game-art game-art-pase">
+      <div className="dice-face five">
+        <i /><i /><i /><i /><i />
+      </div>
+      <div className="dice-face three">
+        <i /><i /><i />
+      </div>
+    </div>
+  );
+}
+
+function MakaiArtwork() {
+  return (
+    <div className="game-art game-art-cards makai-cards">
+      <div className="makai-pair">
+        <SpanishCard value="7" suit="ORO" />
+        <SpanishCard value="2" suit="COPA" />
+      </div>
+      <div className="makai-pair">
+        <SpanishCard value="6" suit="ESP" />
+        <SpanishCard value="3" suit="BASTO" />
+      </div>
+      <div className="makai-pair">
+        <SpanishCard value="5" suit="COPA" />
+        <SpanishCard value="4" suit="ORO" />
+      </div>
+    </div>
+  );
+}
+
+function BojoArtwork() {
+  return (
+    <div className="game-art game-art-cards bojo-cards">
+      {["11", "10", "7", "6", "5"].map((value) => (
+        <SpanishCard key={value} value={value} suit="ORO" />
+      ))}
+    </div>
+  );
+}
+
+function BingoArtwork() {
+  return (
+    <div className="game-art game-art-bingo">
+      {["B7", "I18", "N33", "G48", "O72"].map((ball) => (
+        <span key={ball}>{ball}</span>
+      ))}
+    </div>
+  );
+}
+
+function PokerArtwork() {
+  return (
+    <div className="game-art game-art-poker">
+      {["A", "K", "Q", "J", "10"].map((value, index) => (
+        <div key={value} className={`poker-card card-${index}`}>
+          <span>{value}</span>
+          <strong>PLAY</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GameArtwork({
+  gameId,
+}) {
+  if (gameId === "PASE") {
+    return <PaseArtwork />;
+  }
+
+  if (gameId === "MAKAI") {
+    return <MakaiArtwork />;
+  }
+
+  if (gameId === "BOJO") {
+    return <BojoArtwork />;
+  }
+
+  if (gameId === "BINGO") {
+    return <BingoArtwork />;
+  }
+
+  return <PokerArtwork />;
+}
+
 function PlayPlatformLobby() {
-  const [selectedGameId, setSelectedGameId] = useState("PASE");
+  const routeGameId =
+    getGameIdFromPath();
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const selectedGame =
-    games.find((game) => game.id === selectedGameId) ?? games[0];
+    games.find((game) => game.id === routeGameId) ?? null;
   const paseTables =
     useMemo(() => tables.filter((table) => table.status !== "closed"), [tables]);
 
@@ -130,19 +247,43 @@ function PlayPlatformLobby() {
           </div>
         )}
 
-        <section className="lobby-layout">
-          <div className="lobby-games">
+        {!selectedGame ? (
+          <section className="lobby-home">
+            <div className="lobby-hero">
+              <span>Lobby principal</span>
+              <h2>Elige tu juego</h2>
+              <p>PASE ya esta disponible. Los demas juegos quedan preparados para las siguientes fases.</p>
+            </div>
+
+            <div className="lobby-games">
+              {games.map((game) => (
+                <a
+                  key={game.id}
+                  href={createGameLink(game.id)}
+                  className={`lobby-game-card accent-${game.accent}`}
+                >
+                  <GameArtwork gameId={game.id} />
+                  <span>{game.status}</span>
+                  <strong>{game.name}</strong>
+                  <small>{game.description}</small>
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="lobby-layout">
+            <div className="lobby-games compact">
             {games.map((game) => (
-              <button
+              <a
                 key={game.id}
-                type="button"
-                className={game.id === selectedGameId ? "is-selected" : ""}
-                onClick={() => setSelectedGameId(game.id)}
+                href={createGameLink(game.id)}
+                className={`lobby-game-card accent-${game.accent} ${game.id === selectedGame.id ? "is-selected" : ""}`}
               >
+                <GameArtwork gameId={game.id} />
                 <span>{game.status}</span>
                 <strong>{game.name}</strong>
                 <small>{game.description}</small>
-              </button>
+              </a>
             ))}
           </div>
 
@@ -152,7 +293,18 @@ function PlayPlatformLobby() {
                 <span>Juego seleccionado</span>
                 <h2>{selectedGame.name}</h2>
               </div>
-              <strong>{selectedGame.status}</strong>
+              <div className="lobby-section-actions">
+                <a href="/">Cambiar juego</a>
+                <strong>{selectedGame.status}</strong>
+              </div>
+            </div>
+
+            <div className={`lobby-feature accent-${selectedGame.accent}`}>
+              <GameArtwork gameId={selectedGame.id} />
+              <div>
+                <span>{selectedGame.name}</span>
+                <strong>{selectedGame.description}</strong>
+              </div>
             </div>
 
             {selectedGame.id !== "PASE" ? (
@@ -205,7 +357,8 @@ function PlayPlatformLobby() {
               </div>
             )}
           </section>
-        </section>
+          </section>
+        )}
       </section>
     </main>
   );
