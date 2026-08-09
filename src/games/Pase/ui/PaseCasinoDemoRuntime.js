@@ -796,6 +796,10 @@ class PaseCasinoDemoRuntime {
       null :
       resolution.point ?? this.resolver.getPoint();
     const round = this.state.table.round;
+    const isMono =
+      outcome === "KULO" &&
+      resolution.finished &&
+      pointBeforeRoll === null;
     const isFirstShooterSuerte =
       outcome === "SUERTE" &&
       resolution.finished &&
@@ -805,7 +809,7 @@ class PaseCasinoDemoRuntime {
       round,
       dice: `${result.dice[0]} + ${result.dice[1]}`,
       total: result.total,
-      result: isFirstShooterSuerte ? "PRIMERA SUERTE" : outcome ?? "PUNTO",
+      result: isMono ? "MONO" : isFirstShooterSuerte ? "PRIMERA SUERTE" : outcome ?? "PUNTO",
       point: resolution.point ?? pointBeforeRoll,
     };
     const settled =
@@ -860,7 +864,9 @@ class PaseCasinoDemoRuntime {
 
     if (kuloWon) {
       const nextShooterId =
-        getNextShooterId(this.state.players, mainPotBeforeRoll.shooterId);
+        isMono ?
+          mainPotBeforeRoll.shooterId :
+          getNextShooterId(this.state.players, mainPotBeforeRoll.shooterId);
       (mainPotBeforeRoll.coverageLog ?? [])
         .filter((item) => item.action === "CUBRIO" && item.amount > 0)
         .forEach((item) => {
@@ -868,7 +874,12 @@ class PaseCasinoDemoRuntime {
             updatePlayerWallet(nextPlayers, item.playerId, item.amount * 2);
         });
       mainPot =
-        createEmptyMainPot(nextShooterId, this.state.players, "PREGUNTAR_TIRADOR", "NUEVO_TIRADOR");
+        createEmptyMainPot(
+          nextShooterId,
+          this.state.players,
+          "PREGUNTAR_TIRADOR",
+          isMono ? "CONTINUAR" : "NUEVO_TIRADOR"
+        );
       nextPhase = "WAITING_MAIN_POT";
       this.resolver.clearPoint();
     }
@@ -893,7 +904,7 @@ class PaseCasinoDemoRuntime {
       dice: {
         values: result.dice,
         total: result.total,
-        outcome,
+        outcome: isMono ? "MONO" : outcome,
         finished: resolution.finished,
       },
       history: [
