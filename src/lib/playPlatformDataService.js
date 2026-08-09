@@ -184,7 +184,38 @@ async function fetchTableById(tableId) {
     throw error;
   }
 
-  return mapTable(data);
+  const table =
+    mapTable(data);
+  const {
+    data: transactions,
+    error: transactionsError,
+  } = await client
+    .from("wallet_transactions")
+    .select("table_id, player_id, amount, transaction_type, reference_type")
+    .eq("table_id", tableId);
+
+  if (transactionsError) {
+    throw transactionsError;
+  }
+
+  const {
+    data: snapshot,
+    error: snapshotError,
+  } = await client
+    .from("game_snapshots")
+    .select("state, updated_at")
+    .eq("table_id", tableId)
+    .maybeSingle();
+
+  if (snapshotError) {
+    throw snapshotError;
+  }
+
+  return {
+    ...table,
+    transactions: transactions ?? [],
+    gameSnapshot: snapshot?.state ?? null,
+  };
 }
 
 async function fetchGameSnapshot(tableId) {

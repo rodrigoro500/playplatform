@@ -63,6 +63,60 @@ function mapLivePlayerToRuntimePlayer(player) {
   };
 }
 
+function sumLoadedTableChips(transactions = []) {
+  return transactions
+    .filter((transaction) => (
+      transaction.transaction_type === "credit" &&
+      transaction.reference_type === "admin_chip_load"
+    ))
+    .reduce((total, transaction) => total + (Number(transaction.amount) || 0), 0);
+}
+
+function getActiveTableChips(state) {
+  const freeChips =
+    (state.players ?? []).reduce((total, player) => total + (Number(player.wallet) || 0), 0);
+  const mainPot =
+    state.table?.mainPot;
+  const lockedMainPot =
+    mainPot &&
+    mainPot.status !== "ESPERANDO_TIRADOR" &&
+    mainPot.status !== "PREGUNTAR_TIRADOR" ?
+      Number(mainPot.total) || 0 :
+      0;
+  const lockedQuickBets =
+    (state.table?.betFeed ?? [])
+      .filter((bet) => bet.status === "CONFIRMADA")
+      .reduce((total, bet) => total + (Number(bet.amount) || 0), 0);
+
+  return {
+    freeChips,
+    lockedChips: lockedMainPot + lockedQuickBets,
+    total: freeChips + lockedMainPot + lockedQuickBets,
+  };
+}
+
+function validateTableChipBalance(state, loadedChips) {
+  if (!loadedChips) {
+    return {
+      ok: true,
+      difference: 0,
+      activeTotal: 0,
+    };
+  }
+
+  const activeChips =
+    getActiveTableChips(state);
+  const difference =
+    activeChips.total - loadedChips;
+
+  return {
+    ...activeChips,
+    ok: Math.abs(difference) === 0,
+    difference,
+    loadedChips,
+  };
+}
+
 function mergeAdminWalletLoads(currentState, runtimePlayers) {
   let changed = false;
   const liveWallets = new Map(
@@ -1100,6 +1154,7 @@ function PlayPlatformCasinoExperience() {
   const savingSnapshotRef = useRef(false);
   const saveRequestIdRef = useRef(0);
   const liveRuntimePlayersRef = useRef([]);
+  const loadedTableChipsRef = useRef(0);
   const [gameState, setGameState] = useState(runtime.getState());
   const [liveTable, setLiveTable] = useState(null);
   const [liveTableStatus, setLiveTableStatus] = useState(tableId ? "Cargando mesa..." : "");
@@ -1146,6 +1201,18 @@ function PlayPlatformCasinoExperience() {
     const syncedState = {
       ...nextState,
     };
+    const chipBalance =
+      tableId && persist ?
+        validateTableChipBalance(syncedState, loadedTableChipsRef.current) :
+        { ok: true };
+
+    if (!chipBalance.ok) {
+      runtimeRef.current.hydrateState(gameState);
+      setLiveTableStatus(
+        `Error de fichas: diferencia de ${formatMoney(chipBalance.difference)} Gs. Accion cancelada.`
+      );
+      return;
+    }
 
     runtimeRef.current.hydrateState(syncedState);
     setGameState(syncedState);
@@ -1198,6 +1265,8 @@ function PlayPlatformCasinoExperience() {
         const runtimePlayers =
           approvedPlayers.map(mapLivePlayerToRuntimePlayer);
         liveRuntimePlayersRef.current = runtimePlayers;
+        loadedTableChipsRef.current =
+          sumLoadedTableChips(nextLiveTable?.transactions);
         const firstPlayerId =
           runtimePlayers[0]?.id ?? "";
         const selectedLivePlayerId =
