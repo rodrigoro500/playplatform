@@ -19,6 +19,7 @@ const games = [
     status: "Disponible",
     description: "Mesas activas con pozo, punto, MONO y voz en vivo.",
     accent: "green",
+    image: "/images/pase-promo.png",
   },
   {
     id: "MAKAI",
@@ -26,6 +27,7 @@ const games = [
     status: "Proximamente",
     description: "Cartas españolas donde la suma nueve manda.",
     accent: "gold",
+    image: "/images/makai-promo.png",
   },
   {
     id: "BOJO",
@@ -227,6 +229,17 @@ function PokerArtwork() {
 function GameArtwork({
   gameId,
 }) {
+  const game =
+    games.find((item) => item.id === gameId);
+
+  if (game?.image) {
+    return (
+      <div className="game-art game-art-promo">
+        <img src={game.image} alt={game.name} />
+      </div>
+    );
+  }
+
   if (gameId === "PASE") {
     return <PaseArtwork />;
   }

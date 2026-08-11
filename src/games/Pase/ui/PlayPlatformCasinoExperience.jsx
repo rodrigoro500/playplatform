@@ -1159,6 +1159,7 @@ function PlayPlatformCasinoExperience() {
   const [liveTable, setLiveTable] = useState(null);
   const [liveTableStatus, setLiveTableStatus] = useState(tableId ? "Cargando mesa..." : "");
   const [isRolling, setIsRolling] = useState(false);
+  const [isRemoteRolling, setIsRemoteRolling] = useState(false);
   const [rollingDice, setRollingDice] = useState([1, 1]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedBet, setSelectedBet] = useState("SUERTE");
@@ -1416,6 +1417,8 @@ function PlayPlatformCasinoExperience() {
       return undefined;
     }
 
+    setIsRemoteRolling(true);
+
     const staleRollingTimerId = window.setTimeout(() => {
       setGameState((currentState) => {
         if (currentState.table.phase !== "ROLLING_DICE") {
@@ -1440,11 +1443,19 @@ function PlayPlatformCasinoExperience() {
       ]);
     }, 70);
 
-    return () => {
-      window.clearTimeout(staleRollingTimerId);
+    const remoteRollTimerId = window.setTimeout(() => {
       clearInterval(rollIntervalRef.current);
+      setRollingDice(dice.values?.length === 2 ? dice.values : [1, 1]);
+      setIsRemoteRolling(false);
+    }, 3200);
+
+    return () => {
+      clearInterval(rollIntervalRef.current);
+      window.clearTimeout(remoteRollTimerId);
+      window.clearTimeout(staleRollingTimerId);
+      setIsRemoteRolling(false);
     };
-  }, [isRolling, remoteRolling]);
+  }, [dice.values, isRolling, remoteRolling]);
 
   useEffect(() => {
     if (quickBetPhase === "READY" || isRolling) {
@@ -1708,7 +1719,7 @@ function PlayPlatformCasinoExperience() {
               players={players}
               dice={dice}
               rollingDice={rollingDice}
-              isRolling={isRolling || remoteRolling}
+              isRolling={isRolling || isRemoteRolling}
               selectedShooter={selectedShooter}
               mainPotAmount={mainPotAmount}
               coverAmount={coverAmount}
@@ -1723,7 +1734,7 @@ function PlayPlatformCasinoExperience() {
             <BottomBar
               table={table}
               players={players}
-              isRolling={isRolling || remoteRolling}
+              isRolling={isRolling || isRemoteRolling}
               currentPlayerId={currentPlayerId}
               isLivePlayer={isLivePlayer}
               mainPotAmount={mainPotAmount}

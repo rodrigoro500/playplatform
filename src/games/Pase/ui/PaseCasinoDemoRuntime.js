@@ -463,6 +463,12 @@ class PaseCasinoDemoRuntime {
     };
     const nextPlayers =
       updatePlayerWallet(this.state.players, activePlayerId, -coverAmount);
+    const startsFreshRoll =
+      requiredCover === 0 && (updatedMainPot.shooterWinCount ?? 0) > 0;
+
+    if (startsFreshRoll || coverageExpired) {
+      this.resolver.clearPoint();
+    }
 
     this.state = {
       ...this.state,
@@ -472,6 +478,7 @@ class PaseCasinoDemoRuntime {
       table: {
         ...this.state.table,
         phase: requiredCover === 0 ? "WAITING_ROLL" : "WAITING_MAIN_POT",
+        point: startsFreshRoll || coverageExpired ? null : this.state.table.point,
         mainPot: coverageExpired ?
           createEmptyMainPot(mainPot.shooterId, this.state.players, "PREGUNTAR_TIRADOR", "CONTINUAR") :
           updatedMainPot,
@@ -508,6 +515,10 @@ class PaseCasinoDemoRuntime {
     const coverageExpired =
       !nextPromptedCoverPlayerId && nextCoverageRound >= 3;
 
+    if (coverageExpired) {
+      this.resolver.clearPoint();
+    }
+
     this.state = {
       ...this.state,
       players: coverageExpired ?
@@ -516,6 +527,7 @@ class PaseCasinoDemoRuntime {
       table: {
         ...this.state.table,
         phase: "WAITING_MAIN_POT",
+        point: coverageExpired ? null : this.state.table.point,
         mainPot: coverageExpired ? createEmptyMainPot(mainPot.shooterId, this.state.players, "PREGUNTAR_TIRADOR", "CONTINUAR") : {
           ...mainPot,
           promptedCoverPlayerId: restartedQueue[0] ?? null,
@@ -557,11 +569,14 @@ class PaseCasinoDemoRuntime {
     const coverageQueue =
       createCoverageQueue(this.state.table.shooterId, this.state.players);
 
+    this.resolver.clearPoint();
+
     this.state = {
       ...this.state,
       table: {
         ...this.state.table,
         phase: "WAITING_MAIN_POT",
+        point: null,
         mainPot: {
           ...mainPot,
           suerte: shooterAmount,
@@ -824,6 +839,8 @@ class PaseCasinoDemoRuntime {
       mainPotBeforeRoll;
     let nextPhase =
       resolution.finished ? "ROUND_FINISHED" : "POINT_ACTIVE";
+    let nextPoint =
+      point;
 
     if (shooterWon) {
       const shooterWinCount =
@@ -835,6 +852,8 @@ class PaseCasinoDemoRuntime {
         mainPot =
           createEmptyMainPot(mainPotBeforeRoll.shooterId, this.state.players, "PREGUNTAR_TIRADOR", "CONTINUAR");
         nextPhase = "WAITING_MAIN_POT";
+        nextPoint = null;
+        this.resolver.clearPoint();
       } else {
         const coverageQueue =
           createCoverageQueue(mainPotBeforeRoll.shooterId, this.state.players);
@@ -859,6 +878,8 @@ class PaseCasinoDemoRuntime {
           status: "SOLICITANDO_DOBLE",
         };
         nextPhase = "WAITING_MAIN_POT";
+        nextPoint = null;
+        this.resolver.clearPoint();
       }
     }
 
@@ -881,6 +902,7 @@ class PaseCasinoDemoRuntime {
           isMono ? "CONTINUAR" : "NUEVO_TIRADOR"
         );
       nextPhase = "WAITING_MAIN_POT";
+      nextPoint = null;
       this.resolver.clearPoint();
     }
 
@@ -891,7 +913,7 @@ class PaseCasinoDemoRuntime {
         phase: nextPhase,
         rollingStartedAt: null,
         shooterId: kuloWon ? mainPot.shooterId : this.state.table.shooterId,
-        point,
+        point: nextPoint,
         mainPot,
         betFeed: settled.betFeed,
         settlementFeed: settled.settlementFeed,

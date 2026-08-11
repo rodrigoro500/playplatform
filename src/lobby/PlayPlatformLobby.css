@@ -254,6 +254,30 @@
   min-height: 74px;
 }
 
+.game-art-promo {
+  min-height: 218px;
+  overflow: hidden;
+  border: 1px solid rgba(253, 224, 71, 0.18);
+  background: #030706;
+  box-shadow: inset 0 -44px 64px rgba(0, 0, 0, 0.42);
+}
+
+.game-art-promo img {
+  height: 100%;
+  min-height: 218px;
+  width: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.lobby-games.compact .game-art-promo {
+  min-height: 122px;
+}
+
+.lobby-games.compact .game-art-promo img {
+  min-height: 122px;
+}
+
 .game-art-pase {
   grid-template-columns: repeat(2, auto);
   gap: 14px;
