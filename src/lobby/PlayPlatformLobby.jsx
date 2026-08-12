@@ -24,31 +24,10 @@ const games = [
   {
     id: "MAKAI",
     name: "MAKAI",
-    status: "Proximamente",
+    status: "Disponible",
     description: "Cartas españolas donde la suma nueve manda.",
     accent: "gold",
     image: "/images/makai-promo.png",
-  },
-  {
-    id: "BOJO",
-    name: "BOJO",
-    status: "Proximamente",
-    description: "Cinco cartas del mismo palo: 11, 10, 7, 6 y 5.",
-    accent: "red",
-  },
-  {
-    id: "BINGO",
-    name: "BINGO",
-    status: "Proximamente",
-    description: "Salas de bingo para proximas versiones.",
-    accent: "blue",
-  },
-  {
-    id: "POKER",
-    name: "POKER",
-    status: "Proximamente",
-    description: "Mesas de poker para proximas versiones.",
-    accent: "violet",
   },
 ];
 
@@ -267,8 +246,11 @@ function PlayPlatformLobby() {
   const [message, setMessage] = useState("");
   const selectedGame =
     games.find((game) => game.id === routeGameId) ?? null;
-  const paseTables =
-    useMemo(() => tables.filter((table) => table.status !== "closed"), [tables]);
+  const selectedGameTables =
+    useMemo(() => tables.filter((table) => (
+      table.status !== "closed" &&
+      (table.gameType ?? "PASE") === (selectedGame?.id ?? "PASE")
+    )), [selectedGame?.id, tables]);
 
   useEffect(() => {
     let isMounted = true;
@@ -320,9 +302,16 @@ function PlayPlatformLobby() {
               <span>Elige un juego y entra a una mesa</span>
             </div>
           </div>
-          <a href="/admin" className="lobby-admin-link">
-            Admin
-          </a>
+          <div className="lobby-header-actions">
+            {selectedGame && (
+              <a href="/" className="lobby-admin-link">
+                Lobby
+              </a>
+            )}
+            <a href="/admin" className="lobby-admin-link">
+              Admin
+            </a>
+          </div>
         </header>
 
         {message && (
@@ -336,7 +325,7 @@ function PlayPlatformLobby() {
             <div className="lobby-hero">
               <span>Lobby principal</span>
               <h2>Elige tu juego</h2>
-              <p>PASE ya esta disponible. Los demas juegos quedan preparados para las siguientes fases.</p>
+              <p>Selecciona PASE o MAKAI para ver sus mesas creadas y entrar al juego.</p>
             </div>
 
             <div className="lobby-games">
@@ -391,55 +380,48 @@ function PlayPlatformLobby() {
               </div>
             </div>
 
-            {selectedGame.id !== "PASE" ? (
-              <div className="lobby-empty">
-                <strong>{selectedGame.name} todavia no esta disponible.</strong>
-                <span>Por ahora puedes jugar PASE.</span>
-              </div>
-            ) : (
-              <div className="lobby-table-list">
-                {loading && (
-                  <div className="lobby-empty">
-                    Cargando mesas...
-                  </div>
-                )}
+            <div className="lobby-table-list">
+              {loading && (
+                <div className="lobby-empty">
+                  Cargando mesas...
+                </div>
+              )}
 
-                {!loading && paseTables.length === 0 && (
-                  <div className="lobby-empty">
-                    <strong>No hay mesas creadas.</strong>
-                    <span>Crea una mesa desde Admin.</span>
-                  </div>
-                )}
+              {!loading && selectedGameTables.length === 0 && (
+                <div className="lobby-empty">
+                  <strong>No hay mesas creadas.</strong>
+                  <span>Crea una mesa de {selectedGame.name} desde Admin.</span>
+                </div>
+              )}
 
-                {paseTables.map((table) => {
-                  const players =
-                    table.players.filter((player) => player.status === "approved" || player.status === "seated");
-                  const freeChips =
-                    players.reduce((total, player) => total + player.chips, 0);
+              {selectedGameTables.map((table) => {
+                const players =
+                  table.players.filter((player) => player.status === "approved" || player.status === "seated");
+                const freeChips =
+                  players.reduce((total, player) => total + player.chips, 0);
 
-                  return (
-                    <article key={table.id} className="lobby-table-card">
-                      <div>
-                        <span>{getTableStatusLabel(table.status)}</span>
-                        <h3>{table.name}</h3>
-                        <p>{players.length} jugadores aprobados</p>
-                      </div>
-                      <div className="lobby-table-stats">
-                        <span>Pozo minimo</span>
-                        <strong>{formatMoney(table.minPot ?? 20000)} Gs</strong>
-                      </div>
-                      <div className="lobby-table-stats">
-                        <span>Saldos libres</span>
-                        <strong>{formatMoney(freeChips)} Gs</strong>
-                      </div>
-                      <a href={createTableLink(table.id)}>
-                        Entrar
-                      </a>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+                return (
+                  <article key={table.id} className="lobby-table-card">
+                    <div>
+                      <span>{getTableStatusLabel(table.status)}</span>
+                      <h3>{table.name}</h3>
+                      <p>{players.length} jugadores aprobados</p>
+                    </div>
+                    <div className="lobby-table-stats">
+                      <span>Pozo minimo</span>
+                      <strong>{formatMoney(table.minPot ?? 20000)} Gs</strong>
+                    </div>
+                    <div className="lobby-table-stats">
+                      <span>Saldos libres</span>
+                      <strong>{formatMoney(freeChips)} Gs</strong>
+                    </div>
+                    <a href={createTableLink(table.id)}>
+                      Entrar
+                    </a>
+                  </article>
+                );
+              })}
+            </div>
           </section>
           </section>
         )}

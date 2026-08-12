@@ -70,7 +70,8 @@
 }
 
 .admin-card button:disabled,
-.admin-card input:disabled {
+.admin-card input:disabled,
+.admin-card select:disabled {
   cursor: not-allowed;
   opacity: 0.58;
 }
@@ -116,7 +117,8 @@
   margin-top: 12px;
 }
 
-.admin-card input {
+.admin-card input,
+.admin-card select {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;

@@ -35,6 +35,13 @@
   gap: 14px;
 }
 
+.lobby-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .lobby-logo {
   display: grid;
   height: 48px;
@@ -157,7 +164,7 @@
 }
 
 .lobby-home .lobby-games {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lobby-games.compact {
@@ -639,6 +646,7 @@
     font-size: 20px;
   }
 
+  .lobby-home .lobby-games,
   .lobby-games,
   .lobby-table-card {
     grid-template-columns: 1fr;

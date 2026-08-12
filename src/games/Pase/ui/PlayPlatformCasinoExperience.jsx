@@ -1674,6 +1674,7 @@ function PlayPlatformCasinoExperience() {
             <span style={{ color: "#34d399" }}>{table.running ? "En curso" : "Lista"}</span>
           </div>
           <div className="casino-header-actions">
+            <a href="/" className="casino-small-button casino-link-button">Lobby</a>
             <button type="button" className="casino-small-button">Como se juega</button>
             <button
               type="button"

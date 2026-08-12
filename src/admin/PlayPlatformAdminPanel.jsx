@@ -132,6 +132,7 @@ function PlayPlatformAdminPanel() {
   const [tables, setTables] = useState([]);
   const [selectedTableId, setSelectedTableId] = useState(null);
   const [newTableName, setNewTableName] = useState("Pase VIP");
+  const [newTableGameType, setNewTableGameType] = useState("PASE");
   const [chipAmount, setChipAmount] = useState(50000);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -196,7 +197,7 @@ function PlayPlatformAdminPanel() {
 
     try {
       const table =
-        await createTable(newTableName);
+        await createTable(newTableName, newTableGameType);
       await loadTables();
       setSelectedTableId(table.id);
       setMessage("Mesa creada correctamente.");
@@ -317,6 +318,16 @@ function PlayPlatformAdminPanel() {
                   onChange={(event) => setNewTableName(event.target.value)}
                 />
               </label>
+              <label>
+                Juego
+                <select
+                  value={newTableGameType}
+                  onChange={(event) => setNewTableGameType(event.target.value)}
+                >
+                  <option value="PASE">PASE</option>
+                  <option value="MAKAI">MAKAI</option>
+                </select>
+              </label>
               <button type="button" onClick={handleCreateTable} disabled={saving}>
                 Crear mesa
               </button>
@@ -335,6 +346,7 @@ function PlayPlatformAdminPanel() {
                     className={table.id === selectedTable?.id ? "is-active" : ""}
                   >
                     <strong>{table.name}</strong>
+                    <span>{table.gameType ?? "PASE"}</span>
                     <span>{table.players.length} jugadores</span>
                   </button>
                 ))}

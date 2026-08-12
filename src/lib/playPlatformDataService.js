@@ -3,8 +3,8 @@ import {
   supabase,
 } from "./supabaseClient";
 
-function createTableCode() {
-  return `PASE-${Math.floor(1000 + Math.random() * 9000)}`;
+function createTableCode(gameType = "PASE") {
+  return `${gameType}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
 function createInviteCode() {
@@ -30,6 +30,7 @@ function mapTable(row) {
   return {
     id: row.id,
     code: row.code,
+    gameType: row.game_type ?? "PASE",
     name: row.name,
     status: row.status,
     minPot: row.min_main_pot,
@@ -62,6 +63,7 @@ async function fetchTables() {
     .select(`
       id,
       code,
+      game_type,
       name,
       status,
       min_main_pot,
@@ -156,6 +158,7 @@ async function fetchTableById(tableId) {
     .select(`
       id,
       code,
+      game_type,
       name,
       status,
       min_main_pot,
@@ -292,10 +295,12 @@ async function syncPlayerWalletBalances(players) {
   }));
 }
 
-async function createTable(name) {
+async function createTable(name, gameType = "PASE") {
   const client = requireSupabase();
+  const normalizedGameType =
+    gameType === "MAKAI" ? "MAKAI" : "PASE";
   const tableCode =
-    createTableCode();
+    createTableCode(normalizedGameType);
   const {
     data,
     error,
@@ -303,8 +308,8 @@ async function createTable(name) {
     .from("play_tables")
     .insert({
       code: tableCode,
-      name: `${name || "Pase VIP"} #${tableCode.replace("PASE-", "")}`,
-      game_type: "PASE",
+      name: `${name || `${normalizedGameType} VIP`} #${tableCode.replace(`${normalizedGameType}-`, "")}`,
+      game_type: normalizedGameType,
       status: "open",
       min_main_pot: 20000,
       max_players: 8,
