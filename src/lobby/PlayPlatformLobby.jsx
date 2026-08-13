@@ -345,32 +345,37 @@ function PlayPlatformLobby() {
           </section>
         ) : (
           <section className="lobby-layout">
-            <div className="lobby-games compact">
-            {games.map((game) => (
-              <a
-                key={game.id}
-                href={createGameLink(game.id)}
-                className={`lobby-game-card accent-${game.accent} ${game.id === selectedGame.id ? "is-selected" : ""}`}
-              >
-                <GameArtwork gameId={game.id} />
-                <span>{game.status}</span>
-                <strong>{game.name}</strong>
-                <small>{game.description}</small>
-              </a>
-            ))}
-          </div>
-
-          <section className="lobby-tables">
-            <div className="lobby-section-head">
-              <div>
-                <span>Juego seleccionado</span>
-                <h2>{selectedGame.name}</h2>
-              </div>
-              <div className="lobby-section-actions">
-                <a href="/">Cambiar juego</a>
-                <strong>{selectedGame.status}</strong>
-              </div>
+            <div className={`lobby-game-title-banner accent-${selectedGame.accent}`}>
+              <span>Juego seleccionado</span>
+              <h2>{selectedGame.name}</h2>
+              <p>{selectedGame.description}</p>
             </div>
+            <div className="lobby-games compact">
+              {games.map((game) => (
+                <a
+                  key={game.id}
+                  href={createGameLink(game.id)}
+                  className={`lobby-game-card accent-${game.accent} ${game.id === selectedGame.id ? "is-selected" : ""}`}
+                >
+                  <GameArtwork gameId={game.id} />
+                  <span>{game.status}</span>
+                  <strong>{game.name}</strong>
+                  <small>{game.description}</small>
+                </a>
+              ))}
+            </div>
+
+            <section className="lobby-tables">
+              <div className="lobby-section-head">
+                <div>
+                  <span>{selectedGame.name}</span>
+                  <h2>Mesas disponibles</h2>
+                </div>
+                <div className="lobby-section-actions">
+                  <a href="/">Cambiar juego</a>
+                  <strong>{selectedGame.status}</strong>
+                </div>
+              </div>
 
             <div className={`lobby-feature accent-${selectedGame.accent}`}>
               <GameArtwork gameId={selectedGame.id} />

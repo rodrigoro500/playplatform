@@ -1307,7 +1307,20 @@
   border-color: rgba(255, 255, 255, 0.16);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(0, 0, 0, 0.5));
   padding: 4px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
   opacity: 0.72;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.casino-player-card.is-available:hover,
+.casino-player-card.is-available:focus-visible {
+  border-color: rgba(52, 211, 153, 0.72);
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.22);
+  opacity: 1;
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .casino-player.is-prompted::after {
@@ -1346,6 +1359,93 @@
   background: rgba(255, 255, 255, 0.06);
   color: #a1a1aa;
   font-size: 18px;
+}
+
+.casino-seat-modal-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 18px;
+}
+
+.casino-seat-modal {
+  display: grid;
+  width: min(420px, 100%);
+  gap: 16px;
+  border: 1px solid rgba(110, 231, 183, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(5, 15, 13, 0.98), rgba(0, 0, 0, 0.96));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+  padding: 18px;
+}
+
+.casino-seat-modal span,
+.casino-seat-modal label {
+  color: #a7f3d0;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.casino-seat-modal h2 {
+  margin: 6px 0 0;
+  color: #f8fafc;
+  font-size: 24px;
+}
+
+.casino-seat-modal label {
+  display: grid;
+  gap: 8px;
+}
+
+.casino-seat-modal input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.46);
+  color: #f8fafc;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.casino-seat-modal p {
+  margin: 0;
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.casino-seat-modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.casino-seat-modal-actions button {
+  border: 1px solid rgba(110, 231, 183, 0.24);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
+  cursor: pointer;
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.casino-seat-modal-actions button:last-child {
+  background: linear-gradient(180deg, #22c55e, #059669);
+}
+
+.casino-seat-modal-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .casino-player-name {

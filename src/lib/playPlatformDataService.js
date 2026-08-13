@@ -549,6 +549,41 @@ async function claimInvite({
   return player;
 }
 
+async function requestTableSeat({
+  tableId,
+  displayName,
+}) {
+  const client = requireSupabase();
+  const cleanName =
+    displayName.trim();
+
+  if (!tableId || cleanName.length < 2) {
+    throw new Error("Nombre invalido.");
+  }
+
+  const {
+    data: player,
+    error,
+  } = await client
+    .from("table_players")
+    .insert({
+      table_id: tableId,
+      display_name: cleanName,
+      status: "pending_approval",
+      muted: true,
+      mic_enabled: false,
+      joined_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return player;
+}
+
 export {
   approvePlayerChips,
   claimInvite,
@@ -561,6 +596,7 @@ export {
   fetchTables,
   findInvite,
   hasSupabaseConfig,
+  requestTableSeat,
   saveGameSnapshot,
   syncPlayerWalletBalances,
   updatePlayerVoice,

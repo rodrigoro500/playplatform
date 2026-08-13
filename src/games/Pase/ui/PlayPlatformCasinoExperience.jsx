@@ -11,6 +11,7 @@ import {
   fetchGameSnapshot,
   fetchTableById,
   hasSupabaseConfig,
+  requestTableSeat,
   saveGameSnapshot,
   syncPlayerWalletBalances,
 } from "../../../lib/playPlatformDataService";
@@ -340,14 +341,20 @@ function PlayerBadge({
 
 function AvailableSeat({
   index,
+  onRequestSeat,
 }) {
   return (
     <div className={`casino-player seat-${index}`}>
-      <div className="casino-player-card is-available">
+      <button
+        type="button"
+        className="casino-player-card is-available"
+        onClick={onRequestSeat}
+        aria-label="Solicitar ingreso a la mesa"
+      >
         <div className="casino-player-avatar available">
           +
         </div>
-      </div>
+      </button>
     </div>
   );
 }
@@ -811,6 +818,7 @@ function GameTable({
   onPassMainPotCoverage,
   onSelectCoverAmount,
   currentPlayerId,
+  onRequestSeat,
 }) {
   const diceValues =
     isRolling ? rollingDice :
@@ -860,7 +868,11 @@ function GameTable({
       {Array.from({
         length: Math.max(0, 8 - players.length),
       }, (_, offset) => (
-        <AvailableSeat key={`available-${offset}`} index={players.length + offset} />
+        <AvailableSeat
+          key={`available-${offset}`}
+          index={players.length + offset}
+          onRequestSeat={onRequestSeat}
+        />
       ))}
     </div>
   );
@@ -1170,6 +1182,10 @@ function PlayPlatformCasinoExperience() {
   const [coverAmount, setCoverAmount] = useState(100000);
   const [quickBetPhase, setQuickBetPhase] = useState("BETTING");
   const [quickBetSeconds, setQuickBetSeconds] = useState(20);
+  const [seatRequestOpen, setSeatRequestOpen] = useState(false);
+  const [seatRequestName, setSeatRequestName] = useState("");
+  const [seatRequestSaving, setSeatRequestSaving] = useState(false);
+  const [seatRequestMessage, setSeatRequestMessage] = useState("");
   const {
     table,
     players,
@@ -1241,6 +1257,54 @@ function PlayPlatformCasinoExperience() {
   const resetQuickBetWindow = () => {
     setQuickBetPhase("BETTING");
     setQuickBetSeconds(20);
+  };
+  const openSeatRequest = () => {
+    if (!tableId) {
+      setLiveTableStatus("Abre una mesa real para solicitar ingreso.");
+      return;
+    }
+
+    setSeatRequestMessage("");
+    setSeatRequestOpen(true);
+  };
+  const closeSeatRequest = () => {
+    if (seatRequestSaving) {
+      return;
+    }
+
+    setSeatRequestOpen(false);
+    setSeatRequestName("");
+    setSeatRequestMessage("");
+  };
+  const submitSeatRequest = async () => {
+    const displayName =
+      seatRequestName.trim();
+
+    if (!tableId || displayName.length < 2) {
+      setSeatRequestMessage("Ingresa tu nombre para solicitar asiento.");
+      return;
+    }
+
+    setSeatRequestSaving(true);
+    setSeatRequestMessage("");
+
+    try {
+      await requestTableSeat({
+        tableId,
+        displayName,
+      });
+      setSeatRequestName("");
+      setSeatRequestMessage("Solicitud enviada. Espera que el admin habilite tus fichas.");
+      setLiveTableStatus("Solicitud enviada al administrador.");
+      window.setTimeout(() => {
+        setSeatRequestOpen(false);
+        setSeatRequestMessage("");
+      }, 1400);
+    } catch (error) {
+      setSeatRequestMessage(`No se pudo enviar la solicitud: ${error.message}`);
+    } finally {
+      setSeatRequestSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -1731,6 +1795,7 @@ function PlayPlatformCasinoExperience() {
               onPassMainPotCoverage={passMainPotCoverage}
               onSelectCoverAmount={setCoverAmount}
               currentPlayerId={currentPlayerId}
+              onRequestSeat={openSeatRequest}
             />
             <BottomBar
               table={table}
@@ -1754,6 +1819,37 @@ function PlayPlatformCasinoExperience() {
           </div>
           <RightPanel table={table} players={players} phase={phase} history={history} />
         </section>
+
+        {seatRequestOpen && (
+          <div className="casino-seat-modal-backdrop">
+            <div className="casino-seat-modal">
+              <div>
+                <span>Solicitar asiento</span>
+                <h2>{liveTable?.name ?? table.tableName ?? "Mesa"}</h2>
+              </div>
+              <label>
+                Tu nombre
+                <input
+                  value={seatRequestName}
+                  onChange={(event) => setSeatRequestName(event.target.value)}
+                  placeholder="Ej: Rodrigo"
+                  disabled={seatRequestSaving}
+                />
+              </label>
+              {seatRequestMessage && (
+                <p>{seatRequestMessage}</p>
+              )}
+              <div className="casino-seat-modal-actions">
+                <button type="button" onClick={closeSeatRequest} disabled={seatRequestSaving}>
+                  Cancelar
+                </button>
+                <button type="button" onClick={submitSeatRequest} disabled={seatRequestSaving || seatRequestName.trim().length < 2}>
+                  Solicitar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
