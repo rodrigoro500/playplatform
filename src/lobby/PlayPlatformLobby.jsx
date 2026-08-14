@@ -308,9 +308,6 @@ function PlayPlatformLobby() {
                 Lobby
               </a>
             )}
-            <a href="/admin" className="lobby-admin-link">
-              Admin
-            </a>
           </div>
         </header>
 

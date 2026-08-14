@@ -128,6 +128,12 @@
   cursor: pointer;
 }
 
+.casino-small-button:disabled,
+.casino-player-card.is-available:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .casino-link-button {
   display: inline-flex;
   align-items: center;

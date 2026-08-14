@@ -56,6 +56,14 @@ function getPlayerIdFromUrl() {
   return new URLSearchParams(window.location.search).get("player");
 }
 
+function getTableShareUrl(tableId) {
+  if (!tableId) {
+    return window.location.origin;
+  }
+
+  return `${window.location.origin}/?table=${tableId}`;
+}
+
 function mapLivePlayerToRuntimePlayer(player) {
   return {
     id: player.id,
@@ -342,6 +350,7 @@ function PlayerBadge({
 function AvailableSeat({
   index,
   onRequestSeat,
+  disabled = false,
 }) {
   return (
     <div className={`casino-player seat-${index}`}>
@@ -349,6 +358,7 @@ function AvailableSeat({
         type="button"
         className="casino-player-card is-available"
         onClick={onRequestSeat}
+        disabled={disabled}
         aria-label="Solicitar ingreso a la mesa"
       >
         <div className="casino-player-avatar available">
@@ -819,6 +829,7 @@ function GameTable({
   onSelectCoverAmount,
   currentPlayerId,
   onRequestSeat,
+  canRequestSeat,
 }) {
   const diceValues =
     isRolling ? rollingDice :
@@ -872,6 +883,7 @@ function GameTable({
           key={`available-${offset}`}
           index={players.length + offset}
           onRequestSeat={onRequestSeat}
+          disabled={!canRequestSeat}
         />
       ))}
     </div>
@@ -1186,6 +1198,7 @@ function PlayPlatformCasinoExperience() {
   const [seatRequestName, setSeatRequestName] = useState("");
   const [seatRequestSaving, setSeatRequestSaving] = useState(false);
   const [seatRequestMessage, setSeatRequestMessage] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
   const {
     table,
     players,
@@ -1198,6 +1211,10 @@ function PlayPlatformCasinoExperience() {
     isLivePlayer ? urlPlayerId : selectedQuickBetPlayer;
   const accountPlayer =
     players.find((player) => player.id === currentPlayerId) ?? players[0] ?? null;
+  const isCurrentApprovedPlayer =
+    Boolean(tableId && urlPlayerId && players.some((player) => player.id === urlPlayerId));
+  const canRequestSeat =
+    Boolean(tableId && !isCurrentApprovedPlayer && players.length < 8);
   const selectedAmountValue =
     Number(selectedAmount) || 0;
   const canConfirmQuickBet =
@@ -1259,6 +1276,15 @@ function PlayPlatformCasinoExperience() {
     setQuickBetSeconds(20);
   };
   const openSeatRequest = () => {
+    if (!canRequestSeat) {
+      setLiveTableStatus(
+        isCurrentApprovedPlayer ?
+          "Ya estas sentado en esta mesa." :
+          "No hay asientos disponibles para solicitar ingreso."
+      );
+      return;
+    }
+
     if (!tableId) {
       setLiveTableStatus("Abre una mesa real para solicitar ingreso.");
       return;
@@ -1305,6 +1331,40 @@ function PlayPlatformCasinoExperience() {
     } finally {
       setSeatRequestSaving(false);
     }
+  };
+  const shareTable = async () => {
+    if (!tableId) {
+      setShareMessage("Abre una mesa real para compartir.");
+      return;
+    }
+
+    const shareUrl =
+      getTableShareUrl(tableId);
+    const shareText =
+      `Te invito a jugar en PlayPlatform: ${shareUrl}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "PlayPlatform",
+          text: shareText,
+          url: shareUrl,
+        });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(shareText);
+        setShareMessage("Link copiado para compartir.");
+      } else {
+        setShareMessage(shareUrl);
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        setShareMessage("No se pudo compartir la mesa.");
+      }
+    }
+
+    window.setTimeout(() => {
+      setShareMessage("");
+    }, 2600);
   };
 
   useEffect(() => {
@@ -1739,6 +1799,14 @@ function PlayPlatformCasinoExperience() {
           </div>
           <div className="casino-header-actions">
             <a href="/" className="casino-small-button casino-link-button">Lobby</a>
+            <button
+              type="button"
+              className="casino-small-button"
+              onClick={shareTable}
+              disabled={!tableId || players.length >= 8}
+            >
+              Compartir mesa
+            </button>
             <button type="button" className="casino-small-button">Como se juega</button>
             <button
               type="button"
@@ -1757,6 +1825,12 @@ function PlayPlatformCasinoExperience() {
         {tableId && liveTableStatus && liveTableStatus !== "Mesa real lista" && (
           <div className="casino-live-table-notice">
             {liveTableStatus}
+          </div>
+        )}
+
+        {shareMessage && (
+          <div className="casino-live-table-notice">
+            {shareMessage}
           </div>
         )}
 
@@ -1796,6 +1870,7 @@ function PlayPlatformCasinoExperience() {
               onSelectCoverAmount={setCoverAmount}
               currentPlayerId={currentPlayerId}
               onRequestSeat={openSeatRequest}
+              canRequestSeat={canRequestSeat}
             />
             <BottomBar
               table={table}
