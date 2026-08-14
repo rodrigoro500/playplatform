@@ -520,7 +520,7 @@
 
 .casino-chip-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 7px;
   margin-top: 10px;
 }
@@ -647,36 +647,60 @@
 }
 
 .casino-chip-button:disabled,
-.casino-quick-custom input:disabled,
 .casino-player-selector select:disabled,
 .casino-bet-selector button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.casino-quick-custom {
+.casino-quick-stepper {
   display: grid;
-  gap: 5px;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  gap: 8px;
   margin-top: 9px;
 }
 
-.casino-quick-custom span {
-  color: #a1a1aa;
-  font-size: 10px;
+.casino-quick-stepper button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #6ee7b7;
+  font-size: 20px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+.casino-quick-stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.casino-quick-stepper div {
+  display: grid;
+  gap: 2px;
+  min-height: 42px;
+  align-content: center;
+  border: 1px solid rgba(110, 231, 183, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.casino-quick-stepper span {
+  color: #a1a1aa;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.casino-quick-custom input {
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.45);
-  color: #e5e7eb;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 800;
+.casino-quick-stepper strong {
+  color: #6ee7b7;
+  font-size: 15px;
+  font-weight: 900;
 }
 
 .casino-chat-list,
@@ -778,7 +802,7 @@
 
 .casino-chat-composer {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   gap: 6px;
   margin-top: 10px;
 }
@@ -824,9 +848,6 @@
 .casino-voice-room {
   display: grid;
   gap: 10px;
-  margin-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 12px;
 }
 
 .casino-voice-head {
@@ -1959,7 +1980,7 @@
   }
 
   .casino-chip-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .casino-panel {

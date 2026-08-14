@@ -386,10 +386,25 @@ function LeftPanel({
   onConfirmBet,
   onSendChatMessage,
 }) {
-  const quickAmounts = [1000, 5000, 10000, 50000, 100000];
+  const quickAmounts = [1000, 5000, 10000, 50000];
+  const [selectedStep, setSelectedStep] = useState(1000);
   const quickBetOpen =
     quickBetPhase !== "BALANCING" &&
     table.phase !== "ROLLING_DICE";
+  const selectedAmountValue =
+    Number(selectedAmount) || 0;
+  const addAmount = (amount) => {
+    setSelectedStep(amount);
+    onSelectAmount(selectedAmountValue + amount);
+  };
+  const adjustAmount = (direction) => {
+    const nextAmount =
+      direction === "up" ?
+        selectedAmountValue + selectedStep :
+        Math.max(0, selectedAmountValue - selectedStep);
+
+    onSelectAmount(nextAmount);
+  };
 
   return (
     <aside className="casino-panel-stack">
@@ -428,36 +443,37 @@ function LeftPanel({
             <button
               key={amount}
               type="button"
-              onClick={() => onSelectAmount(amount)}
-              className={`casino-chip-button ${amount === selectedAmount ? "is-active" : ""}`}
+              onClick={() => addAmount(amount)}
+              className={`casino-chip-button ${amount === selectedStep ? "is-active" : ""}`}
               disabled={!quickBetOpen}
             >
-              {formatMoney(amount)}
+              +{formatMoney(amount)}
               <span style={{ display: "block", fontSize: 9 }}>Gs</span>
             </button>
           ))}
+        </div>
+        <div className="casino-quick-stepper">
           <button
             type="button"
-            className="casino-chip-button"
-            disabled={!quickBetOpen}
+            onClick={() => adjustAmount("down")}
+            disabled={!quickBetOpen || selectedAmountValue <= 0}
+            aria-label="Bajar monto"
           >
-            Otro
+            -
+          </button>
+          <div>
+            <span>Monto seleccionado</span>
+            <strong>{formatMoney(selectedAmountValue)} Gs</strong>
+          </div>
+          <button
+            type="button"
+            onClick={() => adjustAmount("up")}
+            disabled={!quickBetOpen}
+            aria-label="Subir monto"
+          >
+            +
           </button>
         </div>
-        <label className="casino-quick-custom">
-          <span>Monto libre</span>
-          <input
-            type="number"
-            min="1000"
-            step="1000"
-            value={selectedAmount}
-            disabled={!quickBetOpen}
-            onChange={(event) => {
-              const value = event.target.value;
-              onSelectAmount(value === "" ? "" : Number(value));
-            }}
-          />
-        </label>
         <button
           type="button"
           className="casino-quick-confirm"
@@ -468,11 +484,15 @@ function LeftPanel({
         </button>
       </Panel>
 
-      <ChatPanel
+      <VoiceRoomPanel
         tableId={tableId}
         currentPlayer={currentPlayer}
         players={players}
         isLivePlayer={isLivePlayer}
+      />
+
+      <ChatPanel
+        currentPlayer={currentPlayer}
         messages={chatMessages}
         onSendMessage={onSendChatMessage}
       />
@@ -530,95 +550,94 @@ function VoiceRoomPanel({
     Boolean(isLivePlayer && tableId && currentPlayer);
 
   return (
-    <div className="casino-voice-room">
-      <div className="casino-voice-head">
-        <div>
-          <div className="casino-panel-title">Voz en vivo</div>
-          <div className="casino-muted">
-            {canUseVoice ? "Sala privada de esta mesa" : "Disponible en mesa real"}
+    <Panel>
+      <div className="casino-voice-room">
+        <div className="casino-voice-head">
+          <div>
+            <div className="casino-panel-title">Voz en vivo</div>
+            <div className="casino-muted">
+              {canUseVoice ? "Sala privada de esta mesa" : "Disponible en mesa real"}
+            </div>
           </div>
+          <span className={`casino-voice-state ${connected ? "is-online" : ""}`}>
+            {connected ? "Conectado" : "Offline"}
+          </span>
         </div>
-        <span className={`casino-voice-state ${connected ? "is-online" : ""}`}>
-          {connected ? "Conectado" : "Offline"}
-        </span>
-      </div>
 
-      <div className="casino-voice-actions">
-        {!connected ? (
-          <button
-            type="button"
-            className="casino-chat-voice"
-            onClick={joinVoice}
-            disabled={!canUseVoice || connecting}
-          >
-            {connecting ? "Conectando..." : "Entrar a voz"}
-          </button>
-        ) : (
-          <>
+        <div className="casino-voice-actions">
+          {!connected ? (
             <button
               type="button"
               className="casino-chat-voice"
-              onClick={toggleMic}
-              disabled={currentPlayer?.muted}
+              onClick={joinVoice}
+              disabled={!canUseVoice || connecting}
             >
-              {micEnabled ? "Silenciar micro" : "Activar micro"}
+              {connecting ? "Conectando..." : "Entrar a voz"}
             </button>
-            <button
-              type="button"
-              className="casino-chat-toggle"
-              onClick={toggleRoomAudio}
-            >
-              {roomMuted ? "Escuchar mesa" : "Silenciar mesa"}
-            </button>
-            <button
-              type="button"
-              className="casino-chat-toggle"
-              onClick={leaveVoice}
-            >
-              Salir
-            </button>
-          </>
-        )}
-      </div>
-
-      {status && (
-        <div className="casino-voice-status">
-          {status}
+          ) : (
+            <>
+              <button
+                type="button"
+                className="casino-chat-voice"
+                onClick={toggleMic}
+                disabled={currentPlayer?.muted}
+              >
+                {micEnabled ? "Silenciar micro" : "Activar micro"}
+              </button>
+              <button
+                type="button"
+                className="casino-chat-toggle"
+                onClick={toggleRoomAudio}
+              >
+                {roomMuted ? "Escuchar mesa" : "Silenciar mesa"}
+              </button>
+              <button
+                type="button"
+                className="casino-chat-toggle"
+                onClick={leaveVoice}
+              >
+                Salir
+              </button>
+            </>
+          )}
         </div>
-      )}
 
-      <div className="casino-voice-list">
-        <div className="casino-voice-participant">
-          <span className={micEnabled ? "is-speaking" : ""} />
-          <strong>{currentPlayer?.name ?? "Tu usuario"}</strong>
-          <small>{micEnabled ? "Micro activo" : "Micro apagado"}</small>
-        </div>
-        {participants.map((participant) => (
-          <div
-            key={participant.clientId}
-            className="casino-voice-participant"
-          >
-            <span className="is-speaking" />
-            <strong>{participant.name}</strong>
-            <small>Escuchando</small>
-            {participant.stream && (
-              <RemoteAudio
-                participant={participant}
-                muted={roomMuted}
-              />
-            )}
+        {status && (
+          <div className="casino-voice-status">
+            {status}
           </div>
-        ))}
+        )}
+
+        <div className="casino-voice-list">
+          <div className="casino-voice-participant">
+            <span className={micEnabled ? "is-speaking" : ""} />
+            <strong>{currentPlayer?.name ?? "Tu usuario"}</strong>
+            <small>{micEnabled ? "Micro activo" : "Micro apagado"}</small>
+          </div>
+          {participants.map((participant) => (
+            <div
+              key={participant.clientId}
+              className="casino-voice-participant"
+            >
+              <span className="is-speaking" />
+              <strong>{participant.name}</strong>
+              <small>Escuchando</small>
+              {participant.stream && (
+                <RemoteAudio
+                  participant={participant}
+                  muted={roomMuted}
+                />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </Panel>
   );
 }
 
 function ChatPanel({
-  tableId,
   currentPlayer,
-  players,
-  isLivePlayer,
   messages,
   onSendMessage,
 }) {
@@ -687,9 +706,6 @@ function ChatPanel({
                 }
               }}
             />
-            <button type="button" className="casino-chat-voice">
-              Voz
-            </button>
             <button
               type="button"
               className="casino-chat-send"
@@ -699,12 +715,6 @@ function ChatPanel({
               Enviar
             </button>
           </div>
-          <VoiceRoomPanel
-            tableId={tableId}
-            currentPlayer={currentPlayer}
-            players={players}
-            isLivePlayer={isLivePlayer}
-          />
         </>
       )}
     </Panel>
@@ -1187,7 +1197,7 @@ function PlayPlatformCasinoExperience() {
   const [rollingDice, setRollingDice] = useState([1, 1]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedBet, setSelectedBet] = useState("SUERTE");
-  const [selectedAmount, setSelectedAmount] = useState(1000);
+  const [selectedAmount, setSelectedAmount] = useState(0);
   const [selectedQuickBetPlayer, setSelectedQuickBetPlayer] = useState(tableId ? "" : "P3");
   const [selectedShooter, setSelectedShooter] = useState(tableId ? "" : "P1");
   const [mainPotAmount, setMainPotAmount] = useState(100000);
@@ -1688,6 +1698,7 @@ function PlayPlatformCasinoExperience() {
       selection: selectedBet,
       amount: quickBetAmount,
     }));
+    setSelectedAmount(0);
   };
 
   const sendChatMessage = (message) => {
