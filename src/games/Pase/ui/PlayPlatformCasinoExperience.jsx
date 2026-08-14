@@ -69,6 +69,8 @@ function mapLivePlayerToRuntimePlayer(player) {
     id: player.id,
     name: player.name,
     wallet: player.chips,
+    muted: player.muted,
+    micEnabled: player.micEnabled,
   };
 }
 
@@ -179,6 +181,8 @@ function syncStatePlayersWithLiveRoster(currentState, runtimePlayers) {
         id: livePlayer.id,
         name: livePlayer.name,
         wallet,
+        muted: livePlayer.muted,
+        micEnabled: livePlayer.micEnabled,
         seat: index + 1,
         connected: true,
         isShooter: livePlayer.id === nextShooterId,
@@ -191,8 +195,13 @@ function syncStatePlayersWithLiveRoster(currentState, runtimePlayers) {
     currentState.players.some((player) => !livePlayerIds.has(player.id));
   const walletsChanged =
     players.some((player) => currentPlayersById.get(player.id)?.wallet !== player.wallet);
+  const voiceChanged =
+    players.some((player) => (
+      currentPlayersById.get(player.id)?.muted !== player.muted ||
+      currentPlayersById.get(player.id)?.micEnabled !== player.micEnabled
+    ));
 
-  if (!playersChanged && !walletsChanged && currentShooterId === nextShooterId) {
+  if (!playersChanged && !walletsChanged && !voiceChanged && currentShooterId === nextShooterId) {
     return currentState;
   }
 
@@ -547,7 +556,7 @@ function VoiceRoomPanel({
   });
 
   const canUseVoice =
-    Boolean(isLivePlayer && tableId && currentPlayer);
+    Boolean(tableId && currentPlayer);
 
   return (
     <Panel>
@@ -556,7 +565,7 @@ function VoiceRoomPanel({
           <div>
             <div className="casino-panel-title">Voz en vivo</div>
             <div className="casino-muted">
-              {canUseVoice ? "Sala privada de esta mesa" : "Disponible en mesa real"}
+              {canUseVoice ? "Sala privada de esta mesa" : "Entra a una mesa real"}
             </div>
           </div>
           <span className={`casino-voice-state ${connected ? "is-online" : ""}`}>

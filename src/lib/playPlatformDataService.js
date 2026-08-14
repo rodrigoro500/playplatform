@@ -412,6 +412,8 @@ async function approvePlayerChips(playerId, tableId, amount) {
     .update({
       status: "approved",
       approved_at: new Date().toISOString(),
+      muted: false,
+      mic_enabled: true,
     })
     .eq("id", playerId);
 
