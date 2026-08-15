@@ -2022,6 +2022,11 @@
     width: 30px;
   }
 
+  .seat-1 {
+    right: 1%;
+    top: 20%;
+  }
+
   .casino-player:has(.casino-player-card.is-available).seat-2 {
     right: 3%;
     top: 36%;

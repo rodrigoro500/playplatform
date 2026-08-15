@@ -404,6 +404,73 @@ async function approvePlayerChips(playerId, tableId, amount) {
   const client = requireSupabase();
   const chips =
     Math.max(0, Number(amount) || 0);
+  const {
+    data: tablePlayers,
+    error: tablePlayersError,
+  } = await client
+    .from("table_players")
+    .select("id, seat_number, joined_at, approved_at")
+    .eq("table_id", tableId)
+    .in("status", ["approved", "seated", "pending_approval"]);
+
+  if (tablePlayersError) {
+    throw tablePlayersError;
+  }
+
+  const sortedPlayers =
+    [...(tablePlayers ?? [])].sort((left, right) => {
+      if (left.seat_number && right.seat_number) {
+        return left.seat_number - right.seat_number;
+      }
+
+      if (left.seat_number) {
+        return -1;
+      }
+
+      if (right.seat_number) {
+        return 1;
+      }
+
+      return new Date(left.joined_at ?? left.approved_at ?? 0) - new Date(right.joined_at ?? right.approved_at ?? 0);
+    });
+  const usedSeats =
+    new Set(sortedPlayers.map((player) => player.seat_number).filter(Boolean));
+  const seatUpdates = [];
+
+  sortedPlayers.forEach((player) => {
+    if (player.seat_number) {
+      return;
+    }
+
+    const nextSeat =
+      Array.from({ length: 8 }, (_item, index) => index + 1)
+        .find((seat) => !usedSeats.has(seat));
+
+    if (!nextSeat) {
+      return;
+    }
+
+    usedSeats.add(nextSeat);
+    seatUpdates.push({
+      id: player.id,
+      seatNumber: nextSeat,
+    });
+  });
+
+  await Promise.all(seatUpdates.map(async (seatUpdate) => {
+    const {
+      error,
+    } = await client
+      .from("table_players")
+      .update({
+        seat_number: seatUpdate.seatNumber,
+      })
+      .eq("id", seatUpdate.id);
+
+    if (error) {
+      throw error;
+    }
+  }));
 
   const {
     error: playerError,

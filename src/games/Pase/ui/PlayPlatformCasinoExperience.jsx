@@ -71,6 +71,7 @@ function mapLivePlayerToRuntimePlayer(player) {
     wallet: player.chips,
     muted: player.muted,
     micEnabled: player.micEnabled,
+    seatNumber: player.seatNumber,
   };
 }
 
@@ -1429,7 +1430,7 @@ function PlayPlatformCasinoExperience() {
         const nextPlayerSignature =
           runtimePlayers.map((player) => `${player.id}:${player.wallet}`).join("|");
         const shouldResetRuntime =
-          !currentState.table.running && currentPlayerSignature !== nextPlayerSignature;
+          currentState.players.length === 0 && currentPlayerSignature !== nextPlayerSignature;
 
         if (shouldResetRuntime) {
           runtimeRef.current = new PaseCasinoDemoRuntime({
@@ -1447,7 +1448,7 @@ function PlayPlatformCasinoExperience() {
           setSelectedShooter(firstPlayerId);
           setSelectedQuickBetPlayer(selectedLivePlayerId);
           setGameState({ ...runtimeRef.current.getState() });
-        } else if (currentState.table.running && !savingSnapshotRef.current) {
+        } else if (!savingSnapshotRef.current) {
           const mergedState =
             syncStatePlayersWithLiveRoster(
               mergeAdminWalletLoads(currentState, runtimePlayers),
