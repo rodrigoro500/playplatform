@@ -907,6 +907,22 @@ function GameTable({
       dice.outcome ?? (dice.total ? "Punto establecido" : "El que se la juega");
   const playerNames = new Map(players.map((player) => [player.id, player.name]));
   const latestBets = new Map();
+  const currentPlayer =
+    players.find((player) => player.id === currentPlayerId) ?? null;
+  const promptedPlayer =
+    players.find((player) => player.id === table.mainPot.promptedCoverPlayerId) ?? null;
+  const coverAmountValue = Number(coverAmount) || 0;
+  const mainPotCopado = table.mainPot.status === "COPADO";
+  const shouldShowCoverPrompt =
+    table.mainPot.status !== "ESPERANDO_TIRADOR" &&
+    !mainPotCopado &&
+    table.mainPot.promptedCoverPlayerId &&
+    currentPlayerId === table.mainPot.promptedCoverPlayerId;
+  const canCoverMainPot =
+    shouldShowCoverPrompt &&
+    coverAmountValue > 0 &&
+    coverAmountValue <= table.mainPot.requiredCover &&
+    coverAmountValue <= (currentPlayer?.wallet ?? 0);
 
   (table.betFeed ?? []).forEach((bet) => {
     if (bet.status === "CONFIRMADA" && bet.amount > 0 && !latestBets.has(bet.playerId)) {
@@ -944,6 +960,31 @@ function GameTable({
           quickBet={latestBets.get(player.id)}
         />
       ))}
+      {shouldShowCoverPrompt && (
+        <div className="casino-table-cover-prompt">
+          <div>
+            <span>Copar pozo por KULO</span>
+            <strong>{promptedPlayer?.name ?? "Jugador"}</strong>
+            <small>Falta: {formatMoney(table.mainPot.requiredCover)} Gs</small>
+          </div>
+          <div className="casino-table-cover-actions">
+            <input
+              type="number"
+              min="1"
+              max={table.mainPot.requiredCover}
+              step="1000"
+              value={Math.min(coverAmount, table.mainPot.requiredCover || coverAmount)}
+              onChange={(event) => onSelectCoverAmount(Number(event.target.value))}
+            />
+            <button type="button" onClick={onCoverMainPot} disabled={!canCoverMainPot}>
+              Copar
+            </button>
+            <button type="button" onClick={onPassMainPotCoverage}>
+              Pasar
+            </button>
+          </div>
+        </div>
+      )}
       {Array.from({
         length: Math.max(0, 8 - players.length),
       }, (_, offset) => (
@@ -953,6 +994,41 @@ function GameTable({
           onRequestSeat={onRequestSeat}
           disabled={!canRequestSeat}
         />
+      ))}
+    </div>
+  );
+}
+
+function RecentWinnersStrip({
+  history,
+}) {
+  const winners = history
+    .filter((item) => (
+      item.result === "KULO" ||
+      item.result === "SUERTE" ||
+      item.result === "PASE" ||
+      item.result === "PRIMERA SUERTE"
+    ))
+    .slice(0, 4)
+    .map((item) => ({
+      ...item,
+      label: item.result === "KULO" ? "KULO" : "SUERTE",
+    }));
+
+  if (winners.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="casino-winner-strip">
+      {winners.map((item) => (
+        <div
+          key={item.id}
+          className={`casino-winner-chip ${item.label === "SUERTE" ? "is-suerte" : "is-kulo"}`}
+        >
+          <span>{item.dice} = {item.total}</span>
+          <strong>{item.label}</strong>
+        </div>
       ))}
     </div>
   );
@@ -1077,6 +1153,7 @@ function MainPotTablePrompt({
 function BottomBar({
   table,
   players,
+  history,
   isRolling,
   currentPlayerId,
   isLivePlayer,
@@ -1097,10 +1174,7 @@ function BottomBar({
     players.find((player) => player.id === currentPlayerId) ?? null;
   const shooter =
     players.find((player) => player.id === table.shooterId) ?? null;
-  const promptedPlayer =
-    players.find((player) => player.id === table.mainPot.promptedCoverPlayerId) ?? null;
   const mainPotAmountValue = Number(mainPotAmount) || 0;
-  const coverAmountValue = Number(coverAmount) || 0;
   const mainPotCopado = table.mainPot.status === "COPADO";
   const isNewShooterPrompt =
     table.mainPot.promptKind === "NUEVO_TIRADOR";
@@ -1117,11 +1191,6 @@ function BottomBar({
     currentPlayerId === table.shooterId &&
     mainPotAmountValue >= 20000 &&
     mainPotAmountValue <= (currentPlayer?.wallet ?? 0);
-  const canCoverMainPot =
-    currentPlayerId === table.mainPot.promptedCoverPlayerId &&
-    coverAmountValue > 0 &&
-    coverAmountValue <= table.mainPot.requiredCover &&
-    coverAmountValue <= (currentPlayer?.wallet ?? 0);
   const canRollDice =
     mainPotCopado &&
     quickBetPhase === "READY" &&
@@ -1188,32 +1257,7 @@ function BottomBar({
       {table.mainPot.status !== "ESPERANDO_TIRADOR" &&
         !shouldAskShooter &&
         !mainPotCopado && (
-        <div className="casino-action-box wide">
-          <small>Copar pozo por KULO</small>
-          <strong>{promptedPlayer?.name ?? "Buscando cobertura"}</strong>
-          {currentPlayerId === table.mainPot.promptedCoverPlayerId ? (
-            <div className="casino-bottom-inline">
-              <input
-                type="number"
-                min="1"
-                max={table.mainPot.requiredCover}
-                step="1000"
-                value={Math.min(coverAmount, table.mainPot.requiredCover || coverAmount)}
-                onChange={(event) => onSelectCoverAmount(Number(event.target.value))}
-              />
-              <button type="button" onClick={onCoverMainPot} disabled={!canCoverMainPot}>
-                Copar
-              </button>
-              <button type="button" onClick={onPassMainPotCoverage}>
-                Pasar
-              </button>
-            </div>
-          ) : (
-            <span className="casino-current-bet-side">
-              Esperando respuesta de {promptedPlayer?.name ?? "otro jugador"}
-            </span>
-          )}
-        </div>
+        <RecentWinnersStrip history={history} />
       )}
       {currentPlayerId === table.shooterId && (
         <button
@@ -1962,6 +2006,7 @@ function PlayPlatformCasinoExperience() {
             <BottomBar
               table={table}
               players={players}
+              history={history}
               isRolling={isRolling || isRemoteRolling}
               currentPlayerId={currentPlayerId}
               isLivePlayer={isLivePlayer}

@@ -1107,6 +1107,86 @@
   white-space: nowrap;
 }
 
+.casino-table-cover-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 9%;
+  z-index: 9;
+  display: grid;
+  width: min(420px, calc(100% - 34px));
+  gap: 8px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(252, 211, 77, 0.58);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(19, 13, 5, 0.94), rgba(4, 7, 6, 0.88));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.54), 0 0 26px rgba(252, 211, 77, 0.2);
+  padding: 10px;
+}
+
+.casino-table-cover-prompt span {
+  display: block;
+  color: #fde68a;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.casino-table-cover-prompt strong {
+  display: block;
+  margin-top: 2px;
+  color: #6ee7b7;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.casino-table-cover-prompt small {
+  color: #e5e7eb;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.casino-table-cover-actions {
+  display: grid;
+  grid-template-columns: minmax(84px, 1fr) auto auto;
+  gap: 6px;
+}
+
+.casino-table-cover-actions input {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.44);
+  color: #f8fafc;
+  padding: 8px 9px;
+  font-size: 11px;
+  font-weight: 900;
+  outline: none;
+}
+
+.casino-table-cover-actions button {
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.16);
+  color: #a7f3d0;
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.casino-table-cover-actions button:last-child {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e5e7eb;
+}
+
+.casino-table-cover-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .casino-table-glow {
   position: absolute;
   inset-inline: 36px;
@@ -1685,6 +1765,57 @@
   letter-spacing: 0.12em;
 }
 
+.casino-winner-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-column: span 2;
+  gap: 6px;
+}
+
+.casino-winner-chip {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid rgba(59, 130, 246, 0.46);
+  border-radius: 10px;
+  background: rgba(30, 64, 175, 0.18);
+  padding: 7px 8px;
+}
+
+.casino-winner-chip span {
+  overflow: hidden;
+  color: #e5e7eb;
+  font-size: 10px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.casino-winner-chip strong {
+  color: #93c5fd;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.casino-winner-chip.is-suerte {
+  border-color: rgba(52, 211, 153, 0.56);
+  background: rgba(16, 185, 129, 0.16);
+}
+
+.casino-winner-chip.is-suerte strong {
+  color: #6ee7b7;
+}
+
+.casino-winner-chip.is-kulo {
+  border-color: rgba(248, 113, 113, 0.56);
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.casino-winner-chip.is-kulo strong {
+  color: #fca5a5;
+}
+
 .casino-current-bet-result {
   display: block;
   margin-top: 6px;
@@ -1980,6 +2111,26 @@
     min-height: 38px;
   }
 
+  .casino-table-cover-prompt {
+    bottom: 6%;
+    width: min(360px, calc(100% - 24px));
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .casino-table-cover-prompt strong {
+    font-size: 16px;
+  }
+
+  .casino-table-cover-actions {
+    grid-template-columns: minmax(76px, 1fr) auto auto;
+  }
+
+  .casino-table-cover-actions input,
+  .casino-table-cover-actions button {
+    padding: 7px 8px;
+  }
+
   .casino-bottom-bar {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
@@ -1987,6 +2138,7 @@
   }
 
   .casino-action-box,
+  .casino-winner-strip,
   .casino-player-selector,
   .casino-bet-selector,
   .casino-action-button.primary {
@@ -1997,6 +2149,10 @@
     min-height: 46px;
     padding: 10px 8px;
     font-size: 10px;
+  }
+
+  .casino-winner-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .casino-quick-pool {
@@ -2253,6 +2409,23 @@
     transform: translate(-50%, -50%);
   }
 
+  .casino-table-cover-prompt {
+    bottom: 7%;
+    width: min(360px, calc(100% - 28px));
+    grid-template-columns: minmax(0, 1fr) minmax(170px, 1fr);
+    align-items: end;
+    padding: 8px;
+  }
+
+  .casino-table-cover-prompt strong {
+    font-size: 15px;
+  }
+
+  .casino-table-cover-actions input,
+  .casino-table-cover-actions button {
+    padding: 6px 7px;
+  }
+
   .casino-bottom-bar {
     grid-template-columns: minmax(0, 1fr) 148px;
     margin-top: 0;
@@ -2261,6 +2434,11 @@
 
   .casino-action-box {
     padding: 8px;
+  }
+
+  .casino-winner-strip {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .casino-action-box strong {
