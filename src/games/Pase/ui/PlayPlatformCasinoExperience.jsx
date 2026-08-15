@@ -81,6 +81,32 @@ function getQuickBetWindowStatus(quickBetWindow, now = Date.now()) {
   };
 }
 
+function getDiceCombosForTotal(total) {
+  if (!total) {
+    return [];
+  }
+
+  const combos = [];
+
+  for (let first = Math.ceil(total / 2); first <= 6; first += 1) {
+    const second = total - first;
+
+    if (second < 1 || second > first) {
+      continue;
+    }
+
+    const normalized =
+      [first, second].sort((a, b) => a - b).join("+");
+
+    combos.push({
+      label: `${first}+${second}`,
+      value: normalized,
+    });
+  }
+
+  return combos;
+}
+
 const pipMap = {
   1: ["pip-center"],
   2: ["pip-top-left", "pip-bottom-right"],
@@ -435,17 +461,24 @@ function LeftPanel({
   isLivePlayer,
   chatMessages,
   selectedBet,
+  selectedExactCombo,
   selectedAmount,
   quickBetPhase,
   quickBetSeconds,
   canConfirmQuickBet,
   onSelectBet,
+  onSelectExactCombo,
   onSelectAmount,
   onConfirmBet,
   onSendChatMessage,
 }) {
   const quickAmounts = [1000, 5000, 10000, 50000];
   const [selectedStep, setSelectedStep] = useState(1000);
+  const exactCombos =
+    table.point ? {
+      suerte: getDiceCombosForTotal(table.point),
+      kulo: getDiceCombosForTotal(7),
+    } : null;
   const quickBetOpen =
     quickBetPhase !== "BALANCING" &&
     table.phase !== "ROLLING_DICE";
@@ -480,7 +513,10 @@ function LeftPanel({
           <button
             type="button"
             className={`suerte ${selectedBet === "SUERTE" ? "is-selected" : ""}`}
-            onClick={() => onSelectBet("SUERTE")}
+            onClick={() => {
+              onSelectBet("SUERTE");
+              onSelectExactCombo("");
+            }}
             disabled={!quickBetOpen}
           >
             <span>SUERTE</span>
@@ -489,13 +525,54 @@ function LeftPanel({
           <button
             type="button"
             className={`kulo ${selectedBet === "KULO" ? "is-selected" : ""}`}
-            onClick={() => onSelectBet("KULO")}
+            onClick={() => {
+              onSelectBet("KULO");
+              onSelectExactCombo("");
+            }}
             disabled={!quickBetOpen}
           >
             <span>KULO</span>
             <strong>{formatMoney(table.instantPool.kulo)} Gs</strong>
           </button>
         </div>
+        {exactCombos && (
+          <div className="casino-exact-bets">
+            <div>
+              <span>Sale punto {table.point}</span>
+              {exactCombos.suerte.map((combo) => (
+                <button
+                  key={`suerte-${combo.value}`}
+                  type="button"
+                  className={selectedBet === "SUERTE" && selectedExactCombo === combo.value ? "is-selected" : ""}
+                  onClick={() => {
+                    onSelectBet("SUERTE");
+                    onSelectExactCombo(combo.value);
+                  }}
+                  disabled={!quickBetOpen}
+                >
+                  {combo.label}
+                </button>
+              ))}
+            </div>
+            <div className="is-kulo">
+              <span>Sale 7</span>
+              {exactCombos.kulo.map((combo) => (
+                <button
+                  key={`kulo-${combo.value}`}
+                  type="button"
+                  className={selectedBet === "KULO" && selectedExactCombo === combo.value ? "is-selected" : ""}
+                  onClick={() => {
+                    onSelectBet("KULO");
+                    onSelectExactCombo(combo.value);
+                  }}
+                  disabled={!quickBetOpen}
+                >
+                  {combo.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="casino-chip-grid">
           {quickAmounts.map((amount) => (
             <button
@@ -538,7 +615,7 @@ function LeftPanel({
           onClick={onConfirmBet}
           disabled={!canConfirmQuickBet}
         >
-          Apostar {selectedBet}
+          Apostar {selectedExactCombo ? `${selectedBet} ${selectedExactCombo}` : selectedBet}
         </button>
       </Panel>
 
@@ -1299,6 +1376,7 @@ function PlayPlatformCasinoExperience() {
   const [rollingDice, setRollingDice] = useState([1, 1]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedBet, setSelectedBet] = useState("SUERTE");
+  const [selectedExactCombo, setSelectedExactCombo] = useState("");
   const [selectedAmount, setSelectedAmount] = useState(0);
   const [selectedQuickBetPlayer, setSelectedQuickBetPlayer] = useState(tableId ? "" : "P3");
   const [selectedShooter, setSelectedShooter] = useState(tableId ? "" : "P1");
@@ -1343,6 +1421,12 @@ function PlayPlatformCasinoExperience() {
   const phase = phaseLabels[table.phase] ?? table.phase;
   const chatMessagesForTable =
     table.chatMessages ?? [];
+
+  useEffect(() => {
+    if (!table.point) {
+      setSelectedExactCombo("");
+    }
+  }, [table.point]);
   const updateState = (nextState, {
     persist = true,
   } = {}) => {
@@ -1816,6 +1900,7 @@ function PlayPlatformCasinoExperience() {
     updateState(runtime.placeQuickBet({
       playerId: currentPlayerId,
       selection: selectedBet,
+      exactCombo: selectedExactCombo || null,
       amount: quickBetAmount,
     }));
     setSelectedAmount(0);
@@ -1974,11 +2059,13 @@ function PlayPlatformCasinoExperience() {
             isLivePlayer={isLivePlayer}
             chatMessages={chatMessagesForTable}
             selectedBet={selectedBet}
+            selectedExactCombo={selectedExactCombo}
             selectedAmount={selectedAmount}
             quickBetPhase={quickBetPhase}
             quickBetSeconds={quickBetSeconds}
             canConfirmQuickBet={canConfirmQuickBet}
             onSelectBet={setSelectedBet}
+            onSelectExactCombo={setSelectedExactCombo}
             onSelectAmount={setSelectedAmount}
             onConfirmBet={confirmQuickBet}
             onSendChatMessage={sendChatMessage}

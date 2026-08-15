@@ -22,6 +22,13 @@ function normalizeWinner(winner) {
   return winner;
 }
 
+function normalizeDicePair(dice = []) {
+  return [...dice]
+    .map((value) => Number(value) || 0)
+    .sort((a, b) => a - b)
+    .join("+");
+}
+
 function createCoverageQueue(shooterId, sourcePlayers = initialPlayers) {
   if (sourcePlayers.length === 0) {
     return [];
@@ -683,6 +690,7 @@ class PaseCasinoDemoRuntime {
     playerId = "P3",
     selection = "SUERTE",
     amount = 50000,
+    exactCombo = null,
   } = {}) {
     if (!playerId) {
       return this.getState();
@@ -705,6 +713,7 @@ class PaseCasinoDemoRuntime {
       id: crypto.randomUUID(),
       playerId,
       selection: selection === "KULO" ? "KULO" : "SUERTE",
+      exactCombo,
       amount: betAmount,
       requestedAmount: betAmount,
       refundedAmount: 0,
@@ -757,7 +766,7 @@ class PaseCasinoDemoRuntime {
     return this.getState();
   }
 
-  settleQuickBets(outcome) {
+  settleQuickBets(outcome, diceValues = []) {
     if (!outcome) {
       return {
         betFeed: this.state.table.betFeed,
@@ -767,12 +776,16 @@ class PaseCasinoDemoRuntime {
     }
 
     let nextPlayers = this.state.players;
+    const rolledCombo =
+      normalizeDicePair(diceValues);
     const betFeed = this.state.table.betFeed.map((bet) => {
       if (bet.status !== "CONFIRMADA") {
         return bet;
       }
 
-      const won = bet.selection === outcome;
+      const won = bet.exactCombo ?
+        bet.selection === outcome && bet.exactCombo === rolledCombo :
+        bet.selection === outcome;
       const payout = won ? bet.amount * 2 : 0;
 
       if (payout > 0) {
@@ -840,7 +853,7 @@ class PaseCasinoDemoRuntime {
       point: resolution.point ?? pointBeforeRoll,
     };
     const settled =
-      this.settleQuickBets(outcome);
+      this.settleQuickBets(outcome, result.dice);
     const shooterWon =
       outcome === "SUERTE" && resolution.finished;
     const kuloWon =
