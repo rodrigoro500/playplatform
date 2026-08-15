@@ -33,6 +33,54 @@ const quickBetPhaseLabels = {
   READY: "Listo para lanzar",
 };
 
+function createQuickBetWindow(now = Date.now()) {
+  return {
+    phase: "BETTING",
+    bettingEndsAt: now + 60000,
+    balancingEndsAt: null,
+  };
+}
+
+function withQuickBetWindow(state, windowPatch = createQuickBetWindow()) {
+  return {
+    ...state,
+    table: {
+      ...state.table,
+      quickBetWindow: windowPatch,
+    },
+  };
+}
+
+function getQuickBetWindowStatus(quickBetWindow, now = Date.now()) {
+  const windowState =
+    quickBetWindow ?? createQuickBetWindow(now);
+
+  if (windowState.phase === "READY") {
+    return {
+      phase: "READY",
+      seconds: 0,
+    };
+  }
+
+  if (windowState.phase === "BALANCING") {
+    const seconds =
+      Math.max(0, Math.ceil(((windowState.balancingEndsAt ?? now) - now) / 1000));
+
+    return {
+      phase: seconds > 0 ? "BALANCING" : "READY",
+      seconds,
+    };
+  }
+
+  const seconds =
+    Math.max(0, Math.ceil(((windowState.bettingEndsAt ?? now) - now) / 1000));
+
+  return {
+    phase: seconds > 0 ? "BETTING" : "BALANCING",
+    seconds,
+  };
+}
+
 const pipMap = {
   1: ["pip-center"],
   2: ["pip-top-left", "pip-bottom-right"],
@@ -1212,8 +1260,7 @@ function PlayPlatformCasinoExperience() {
   const [selectedShooter, setSelectedShooter] = useState(tableId ? "" : "P1");
   const [mainPotAmount, setMainPotAmount] = useState(100000);
   const [coverAmount, setCoverAmount] = useState(100000);
-  const [quickBetPhase, setQuickBetPhase] = useState("BETTING");
-  const [quickBetSeconds, setQuickBetSeconds] = useState(20);
+  const [nowMs, setNowMs] = useState(Date.now());
   const [seatRequestOpen, setSeatRequestOpen] = useState(false);
   const [seatRequestName, setSeatRequestName] = useState("");
   const [seatRequestSaving, setSeatRequestSaving] = useState(false);
@@ -1235,6 +1282,12 @@ function PlayPlatformCasinoExperience() {
     Boolean(tableId && urlPlayerId && players.some((player) => player.id === urlPlayerId));
   const canRequestSeat =
     Boolean(tableId && !isCurrentApprovedPlayer && players.length < 8);
+  const quickBetStatus =
+    getQuickBetWindowStatus(table.quickBetWindow, nowMs);
+  const quickBetPhase =
+    quickBetStatus.phase;
+  const quickBetSeconds =
+    quickBetStatus.seconds;
   const selectedAmountValue =
     Number(selectedAmount) || 0;
   const canConfirmQuickBet =
@@ -1243,9 +1296,6 @@ function PlayPlatformCasinoExperience() {
     Boolean(accountPlayer) &&
     selectedAmountValue >= 1000 &&
     selectedAmountValue <= (accountPlayer?.wallet ?? 0);
-  const canControlQuickBetWindow =
-    !isLivePlayer ||
-    currentPlayerId === table.shooterId;
   const phase = phaseLabels[table.phase] ?? table.phase;
   const chatMessagesForTable =
     table.chatMessages ?? [];
@@ -1292,8 +1342,7 @@ function PlayPlatformCasinoExperience() {
     }
   };
   const resetQuickBetWindow = () => {
-    setQuickBetPhase("BETTING");
-    setQuickBetSeconds(20);
+    updateState(withQuickBetWindow(runtimeRef.current.getState(), createQuickBetWindow()));
   };
   const openSeatRequest = () => {
     if (!canRequestSeat) {
@@ -1602,31 +1651,48 @@ function PlayPlatformCasinoExperience() {
   }, [dice.values, isRolling, remoteRolling]);
 
   useEffect(() => {
-    if (quickBetPhase === "READY" || isRolling) {
-      return undefined;
+    const timerId =
+      window.setInterval(() => {
+        setNowMs(Date.now());
+      }, 500);
+
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  useEffect(() => {
+    if (isRolling) {
+      return;
     }
 
-    const timerId = window.setTimeout(() => {
-      setQuickBetSeconds((seconds) => {
-        if (seconds > 1) {
-          return seconds - 1;
-        }
+    const quickWindow =
+      table.quickBetWindow;
 
-        if (quickBetPhase === "BETTING") {
-          if (canControlQuickBetWindow) {
-            updateState(runtime.closeQuickBetting());
-          }
-          setQuickBetPhase("BALANCING");
-          return 5;
-        }
-
-        setQuickBetPhase("READY");
-        return 0;
+    if (!quickWindow) {
+      updateState(withQuickBetWindow(runtime.getState(), createQuickBetWindow()), {
+        persist: Boolean(tableId),
       });
-    }, 1000);
+      return;
+    }
 
-    return () => window.clearTimeout(timerId);
-  }, [canControlQuickBetWindow, isRolling, quickBetPhase, quickBetSeconds, runtime]);
+    if (quickWindow.phase === "BETTING" && quickBetPhase === "BALANCING") {
+      const balancedState =
+        runtime.closeQuickBetting();
+      updateState(withQuickBetWindow(balancedState, {
+        ...quickWindow,
+        phase: "BALANCING",
+        balancingEndsAt: Date.now() + 5000,
+      }));
+      return;
+    }
+
+    if (quickWindow.phase === "BALANCING" && quickBetPhase === "READY") {
+      updateState(withQuickBetWindow(runtime.getState(), {
+        ...quickWindow,
+        phase: "READY",
+        balancingEndsAt: quickWindow.balancingEndsAt ?? Date.now(),
+      }));
+    }
+  }, [isRolling, quickBetPhase, runtime, table.quickBetWindow, tableId]);
 
   const toggleFullscreen = async () => {
     if (document.fullscreenElement) {

@@ -56,6 +56,8 @@ function createPlayers(activeShooterId = "P1", sourcePlayers = initialPlayers) {
 
 function createInitialState(sourcePlayers = initialPlayers, tableInfo = {}) {
   const shooterId = sourcePlayers[0]?.id ?? null;
+  const quickBetStartedAt =
+    Date.now();
 
   return {
     table: {
@@ -89,6 +91,11 @@ function createInitialState(sourcePlayers = initialPlayers, tableInfo = {}) {
         suerte: 0,
         kulo: 0,
         total: 0,
+      },
+      quickBetWindow: {
+        phase: "BETTING",
+        bettingEndsAt: quickBetStartedAt + 60000,
+        balancingEndsAt: null,
       },
       currentBet: null,
       betFeed: [],
@@ -206,7 +213,7 @@ function balanceInstantBets({
   let nextPlayers = players;
   const pool = getInstantPoolFromBets(nextBetFeed, round);
 
-  if (pool.suerte === 0 || pool.kulo === 0 || pool.suerte === pool.kulo) {
+  if (pool.suerte === pool.kulo) {
     return {
       betFeed: nextBetFeed,
       players: nextPlayers,
@@ -215,7 +222,7 @@ function balanceInstantBets({
   }
 
   const overSelection =
-    pool.suerte > pool.kulo ? "SUERTE" : "KULO";
+    pool.suerte >= pool.kulo ? "SUERTE" : "KULO";
   let pendingRefund =
     Math.abs(pool.suerte - pool.kulo);
 
@@ -652,6 +659,11 @@ class PaseCasinoDemoRuntime {
           kulo: 0,
           total: 0,
         },
+        quickBetWindow: {
+          phase: "BETTING",
+          bettingEndsAt: Date.now() + 60000,
+          balancingEndsAt: null,
+        },
       },
       players: createPlayers(nextShooterId, this.state.players),
       dice: {
@@ -956,6 +968,11 @@ class PaseCasinoDemoRuntime {
           suerte: 0,
           kulo: 0,
           total: 0,
+        },
+        quickBetWindow: {
+          phase: "BETTING",
+          bettingEndsAt: Date.now() + 60000,
+          balancingEndsAt: null,
         },
       },
       dice: {
