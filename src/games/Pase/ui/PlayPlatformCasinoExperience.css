@@ -1870,30 +1870,49 @@
     top: 0;
     z-index: 20;
     grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 12px;
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .casino-brand {
+    gap: 8px;
+  }
+
+  .casino-logo {
+    height: 34px;
+    width: 34px;
+    border-radius: 10px;
+    font-size: 20px;
   }
 
   .casino-brand-title {
-    font-size: 18px;
+    font-size: 17px;
+  }
+
+  .casino-brand-subtitle {
+    margin-top: 1px;
+    font-size: 8px;
   }
 
   .casino-table-status {
     justify-content: center;
     width: 100%;
-    padding: 9px 11px;
-    font-size: 11px;
+    padding: 7px 10px;
+    font-size: 10px;
   }
 
   .casino-header-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     width: 100%;
-    gap: 8px;
+    gap: 6px;
   }
 
   .casino-header-actions .casino-small-button {
-    min-height: 44px;
+    min-height: 34px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    font-size: 10px;
   }
 
   .casino-wallet {
@@ -1903,8 +1922,8 @@
   .casino-layout {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px;
+    gap: 7px;
+    padding: 7px;
     overflow: visible;
   }
 
@@ -1927,17 +1946,17 @@
   }
 
   .casino-table-stage {
-    min-height: 340px;
+    min-height: 292px;
     overflow: hidden;
-    padding: 4px;
+    padding: 2px;
   }
 
   .casino-wood-table {
     left: 50%;
-    top: 43%;
+    top: 40%;
     width: 540px;
     height: 340px;
-    transform: translate(-50%, -50%) scale(0.58);
+    transform: translate(-50%, -50%) scale(0.52);
     transform-origin: center;
   }
 
@@ -1946,8 +1965,9 @@
     left: auto;
     top: auto;
     width: 100%;
-    margin-top: 10px;
+    margin-top: 6px;
     transform: none;
+    padding: 8px;
   }
 
   .casino-main-pot-form,
@@ -1957,7 +1977,7 @@
 
   .casino-main-pot-form button,
   .casino-main-pot-cover button {
-    min-height: 42px;
+    min-height: 38px;
   }
 
   .casino-bottom-bar {
@@ -1989,7 +2009,7 @@
 
   .casino-panel {
     border-radius: 9px;
-    padding: 11px;
+    padding: 9px;
   }
 
   .casino-player-card {
@@ -2128,14 +2148,14 @@
   }
 
   .casino-header-actions .casino-small-button {
-    min-height: 32px;
-    padding: 6px 8px;
+    min-height: 28px;
+    padding: 5px 7px;
     font-size: 10px;
   }
 
   .casino-layout {
     display: grid;
-    grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.3fr) minmax(200px, 0.7fr);
+    grid-template-columns: minmax(205px, 0.75fr) minmax(340px, 1.35fr) minmax(190px, 0.7fr);
     gap: 6px;
     height: calc(100svh - 48px);
     padding: 6px;
@@ -2227,9 +2247,9 @@
   }
 
   .casino-wood-table {
-    top: 53%;
-    width: min(92%, 520px);
-    height: 245px;
+    top: 50%;
+    width: min(90%, 500px);
+    height: 228px;
     transform: translate(-50%, -50%);
   }
 
@@ -2352,11 +2372,11 @@
 
 @media (max-width: 390px) {
   .casino-wood-table {
-    transform: translate(-50%, -50%) scale(0.58);
+    transform: translate(-50%, -50%) scale(0.49);
   }
 
   .casino-table-stage {
-    min-height: 390px;
+    min-height: 282px;
   }
 
   .casino-bottom-bar {
