@@ -10,6 +10,9 @@ import {
   fetchTables,
   hasSupabaseConfig,
 } from "../lib/playPlatformDataService";
+import {
+  supabase,
+} from "../lib/supabaseClient";
 import "./PlayPlatformLobby.css";
 
 const games = [
@@ -244,6 +247,7 @@ function PlayPlatformLobby() {
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [session, setSession] = useState(null);
   const selectedGame =
     games.find((game) => game.id === routeGameId) ?? null;
   const selectedGameTables =
@@ -291,6 +295,41 @@ function PlayPlatformLobby() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({
+      data,
+    }) => {
+      if (isMounted) {
+        setSession(data.session ?? null);
+      }
+    });
+
+    const {
+      data: authListener,
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const signOut = async () => {
+    if (!supabase) {
+      return;
+    }
+
+    await supabase.auth.signOut();
+  };
+
   return (
     <main className="lobby-screen">
       <section className="lobby-shell">
@@ -306,6 +345,18 @@ function PlayPlatformLobby() {
             {selectedGame && (
               <a href="/" className="lobby-admin-link">
                 Lobby
+              </a>
+            )}
+            {session ? (
+              <div className="lobby-account-pill">
+                <span>{session.user.email}</span>
+                <button type="button" onClick={signOut}>
+                  Salir
+                </button>
+              </div>
+            ) : (
+              <a href="/login" className="lobby-admin-link">
+                Iniciar sesion
               </a>
             )}
           </div>
