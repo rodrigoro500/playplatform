@@ -15,45 +15,54 @@ import {
 } from "../lib/supabaseClient";
 import "./PlayPlatformLobby.css";
 
-const games = [
+const playOriginals = [
   {
     id: "PASE",
     name: "PASE",
-    status: "Disponible",
-    description: "Mesas activas con pozo, punto, MONO y voz en vivo.",
+    label: "PLAY Original",
+    status: "Mesas reales",
+    description: "Dados, pozo principal, MONO, punto y copado en vivo.",
     accent: "green",
     image: "/images/pase-promo.png",
   },
   {
     id: "MAKAI",
     name: "MAKAI",
-    status: "Disponible",
-    description: "Cartas españolas donde la suma nueve manda.",
+    label: "PLAY Original",
+    status: "Mesas reales",
+    description: "Cartas espanolas, banca rapida y suma nueve.",
     accent: "gold",
     image: "/images/makai-promo.png",
   },
 ];
 
-const spanishDeck = {
-  image: "/assets/baraja-espanola.svg",
-  width: 2496,
-  height: 1595,
-  cardWidth: 207,
-  cardHeight: 318,
-};
+const providerRows = [
+  {
+    title: "Pragmatic Play",
+    provider: "Demo provider",
+    accent: "red",
+    games: ["Wolf Gold", "Sweet Bonanza", "Gates of Olympus", "Sugar Rush"],
+  },
+  {
+    title: "Amatic",
+    provider: "Demo provider",
+    accent: "blue",
+    games: ["Hot Fruits", "Book of Aztec", "Lucky Bells", "Wild Shark"],
+  },
+  {
+    title: "Wazdan",
+    provider: "Demo provider",
+    accent: "violet",
+    games: ["Magic Stars", "Power of Gods", "Sizzling 777", "Burning Sun"],
+  },
+];
 
-const spanishCards = {
-  "7_ORO": { x: 1248, y: 1 },
-  "2_COPA": { x: 208, y: 320 },
-  "6_ESPADA": { x: 1040, y: 638 },
-  "3_BASTO": { x: 416, y: 957 },
-  "5_COPA": { x: 832, y: 320 },
-  "4_ORO": { x: 624, y: 1 },
-  "11_ORO": { fragment: "queen_diamond", viewBox: "2288 1 207 318" },
-  "10_ORO": { fragment: "jack_diamond", viewBox: "2080 1 207 318" },
-  "6_ORO": { x: 1040, y: 1 },
-  "5_ORO": { x: 832, y: 1 },
-};
+const categories = [
+  ["Slots", "Proveedores demo", "126 juegos"],
+  ["Casino en vivo", "Proxima fase", "Ruleta y blackjack"],
+  ["PLAY", "Juegos propios", "PASE y MAKAI"],
+  ["Promos", "Bonos demo", "Sin dinero real"],
+];
 
 function getGameIdFromPath() {
   const match =
@@ -80,165 +89,35 @@ function getTableStatusLabel(status) {
   return labels[status] ?? status ?? "Lista";
 }
 
-function RealSpanishCard({
-  card,
-  tilt = 0,
-  lift = 0,
-}) {
-  const source =
-    spanishCards[card] ?? spanishCards["7_ORO"];
-  const scale = 0.35;
-  const cardStyle = {
-    width: spanishDeck.cardWidth * scale,
-    height: spanishDeck.cardHeight * scale,
-    transform: `rotate(${tilt}deg) translateY(${lift}px)`,
-  };
-
-  if (source.fragment) {
-    return (
-      <svg
-        className="real-spanish-card real-spanish-card-svg"
-        viewBox={source.viewBox}
-        style={cardStyle}
-        aria-label={card}
-        role="img"
-      >
-        <use href={`${spanishDeck.image}#${source.fragment}`} />
-      </svg>
-    );
-  }
-
-  return (
-    <div
-      className="real-spanish-card"
-      style={{
-        ...cardStyle,
-        backgroundImage: `url(${spanishDeck.image})`,
-        backgroundSize: `${spanishDeck.width * scale}px ${spanishDeck.height * scale}px`,
-        backgroundPosition: `-${source.x * scale}px -${source.y * scale}px`,
-      }}
-    >
-      <span className="sr-only">{card}</span>
-    </div>
-  );
-}
-
-function PaseArtwork() {
-  return (
-    <div className="game-art game-art-pase">
-      <div className="dice-face five">
-        <i /><i /><i /><i /><i />
-      </div>
-      <div className="dice-face three">
-        <i /><i /><i />
-      </div>
-    </div>
-  );
-}
-
-function MakaiArtwork() {
-  return (
-    <div className="game-art game-art-cards makai-cards">
-      <div className="makai-pair">
-        <RealSpanishCard card="7_ORO" tilt={-8} />
-        <RealSpanishCard card="2_COPA" tilt={8} />
-      </div>
-      <div className="makai-pair">
-        <RealSpanishCard card="6_ESPADA" tilt={-8} />
-        <RealSpanishCard card="3_BASTO" tilt={8} />
-      </div>
-      <div className="makai-pair">
-        <RealSpanishCard card="5_COPA" tilt={-8} />
-        <RealSpanishCard card="4_ORO" tilt={8} />
-      </div>
-    </div>
-  );
-}
-
-function BojoArtwork() {
-  const bojoCards = [
-    ["11_ORO", -18, 16],
-    ["10_ORO", -9, 6],
-    ["7_ORO", 0, 0],
-    ["6_ORO", 9, 6],
-    ["5_ORO", 18, 16],
-  ];
-
-  return (
-    <div className="game-art game-art-cards bojo-cards">
-      {bojoCards.map(([card, tilt, lift]) => (
-        <RealSpanishCard key={card} card={card} tilt={tilt} lift={lift} />
-      ))}
-    </div>
-  );
-}
-
-function BingoArtwork() {
-  return (
-    <div className="game-art game-art-bingo">
-      {["B 7", "I 18", "N 33", "G 48", "O 72"].map((ball, index) => (
-        <span key={ball} className={`bingo-ball ball-${index}`}>
-          <strong>{ball.split(" ")[0]}</strong>
-          <em>{ball.split(" ")[1]}</em>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function PokerArtwork() {
-  const pokerCards = [
-    ["A", "spade"],
-    ["K", "heart"],
-    ["Q", "diamond"],
-    ["J", "club"],
-    ["10", "spade"],
-  ];
-
-  return (
-    <div className="game-art game-art-poker">
-      {pokerCards.map(([value, suit], index) => (
-        <div key={`${value}-${suit}`} className={`poker-card card-${index} suit-${suit}`}>
-          <span>{value}</span>
-          <strong>{suit === "spade" ? "♠" : suit === "heart" ? "♥" : suit === "diamond" ? "♦" : "♣"}</strong>
-          <small>{value}</small>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function GameArtwork({
-  gameId,
+  game,
 }) {
-  const game =
-    games.find((item) => item.id === gameId);
-
-  if (game?.image) {
-    return (
-      <div className="game-art game-art-promo">
+  return (
+    <div className="casino-game-art">
+      {game.image ? (
         <img src={game.image} alt={game.name} />
+      ) : (
+        <div className={`casino-card-symbol accent-${game.accent}`}>
+          {game.name.slice(0, 2)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProviderGameCard({
+  name,
+  accent,
+}) {
+  return (
+    <article className={`provider-game-card accent-${accent}`}>
+      <div className="provider-game-mark">
+        {name.split(" ").map((word) => word[0]).join("").slice(0, 2)}
       </div>
-    );
-  }
-
-  if (gameId === "PASE") {
-    return <PaseArtwork />;
-  }
-
-  if (gameId === "MAKAI") {
-    return <MakaiArtwork />;
-  }
-
-  if (gameId === "BOJO") {
-    return <BojoArtwork />;
-  }
-
-  if (gameId === "BINGO") {
-    return <BingoArtwork />;
-  }
-
-  return <PokerArtwork />;
+      <strong>{name}</strong>
+      <span>Demo</span>
+    </article>
+  );
 }
 
 function PlayPlatformLobby() {
@@ -249,12 +128,22 @@ function PlayPlatformLobby() {
   const [message, setMessage] = useState("");
   const [session, setSession] = useState(null);
   const selectedGame =
-    games.find((game) => game.id === routeGameId) ?? null;
+    playOriginals.find((game) => game.id === routeGameId) ?? null;
   const selectedGameTables =
     useMemo(() => tables.filter((table) => (
       table.status !== "closed" &&
       (table.gameType ?? "PASE") === (selectedGame?.id ?? "PASE")
     )), [selectedGame?.id, tables]);
+  const liveTables =
+    useMemo(() => tables.filter((table) => table.status !== "closed"), [tables]);
+  const activePlayers =
+    liveTables.reduce((total, table) => (
+      total + table.players.filter((player) => player.status === "approved" || player.status === "seated").length
+    ), 0);
+  const totalChips =
+    liveTables.reduce((total, table) => (
+      total + table.players.reduce((sum, player) => sum + (Number(player.chips) || 0), 0)
+    ), 0);
 
   useEffect(() => {
     let isMounted = true;
@@ -331,157 +220,202 @@ function PlayPlatformLobby() {
   };
 
   return (
-    <main className="lobby-screen">
-      <section className="lobby-shell">
-        <header className="lobby-header">
-          <div className="lobby-brand">
-            <div className="lobby-logo">P</div>
+    <main className="casino-lobby-screen">
+      <section className="casino-lobby-shell">
+        <header className="casino-topbar">
+          <a href="/" className="casino-brand">
+            <div className="casino-logo">P</div>
             <div>
-              <h1>PlayPlatform</h1>
-              <span>Elige un juego y entra a una mesa</span>
+              <strong>PLAY Casino</strong>
+              <span>Demo platform</span>
             </div>
-          </div>
-          <div className="lobby-header-actions">
+          </a>
+          <div className="casino-top-actions">
             {selectedGame && (
-              <a href="/" className="lobby-admin-link">
-                Lobby
+              <a href="/" className="casino-nav-button">
+                Inicio
               </a>
             )}
+            <a href="/admin" className="casino-nav-button">
+              Admin
+            </a>
             {session ? (
-              <div className="lobby-account-pill">
+              <div className="casino-account">
                 <span>{session.user.email}</span>
                 <button type="button" onClick={signOut}>
                   Salir
                 </button>
               </div>
             ) : (
-              <a href="/login" className="lobby-admin-link">
-                Iniciar sesion
+              <a href="/login" className="casino-nav-button primary">
+                Ingresar
               </a>
             )}
           </div>
         </header>
 
         {message && (
-          <div className="lobby-alert">
+          <div className="casino-alert">
             {message}
           </div>
         )}
 
         {!selectedGame ? (
-          <section className="lobby-home">
-            <div className="lobby-hero">
-              <span>Lobby principal</span>
-              <h2>Elige tu juego</h2>
-              <p>Selecciona PASE o MAKAI para ver sus mesas creadas y entrar al juego.</p>
-            </div>
+          <>
+            <section className="casino-hero">
+              <div className="casino-hero-copy">
+                <span>PLAY Ecosystem</span>
+                <h1>PLAY Casino</h1>
+                <p>
+                  Lobby mobile-first para juegos propios, mesas en vivo y futuros proveedores externos.
+                </p>
+                <div className="casino-hero-actions">
+                  <a href="#play-originals">Juegos PLAY</a>
+                  <a href="#providers">Proveedores demo</a>
+                </div>
+              </div>
+              <div className="casino-balance-card">
+                <span>Saldo demo</span>
+                <strong>{formatMoney(totalChips || 250000)} Gs</strong>
+                <small>{activePlayers} jugadores activos</small>
+              </div>
+            </section>
 
-            <div className="lobby-games">
-              {games.map((game) => (
-                <a
-                  key={game.id}
-                  href={createGameLink(game.id)}
-                  className={`lobby-game-card accent-${game.accent}`}
-                >
-                  <GameArtwork gameId={game.id} />
-                  <span>{game.status}</span>
-                  <strong>{game.name}</strong>
-                  <small>{game.description}</small>
-                </a>
+            <section className="casino-category-grid">
+              {categories.map(([title, label, value]) => (
+                <article key={title} className="casino-category">
+                  <span>{label}</span>
+                  <strong>{title}</strong>
+                  <small>{value}</small>
+                </article>
               ))}
-            </div>
-          </section>
+            </section>
+
+            <section id="play-originals" className="casino-section">
+              <div className="casino-section-head">
+                <div>
+                  <span>PLAY Originals</span>
+                  <h2>Juegos propios</h2>
+                </div>
+                <strong>{playOriginals.length} disponibles</strong>
+              </div>
+              <div className="casino-originals-grid">
+                {playOriginals.map((game) => (
+                  <a
+                    key={game.id}
+                    href={createGameLink(game.id)}
+                    className={`casino-original-card accent-${game.accent}`}
+                  >
+                    <GameArtwork game={game} />
+                    <span>{game.label}</span>
+                    <strong>{game.name}</strong>
+                    <small>{game.description}</small>
+                  </a>
+                ))}
+              </div>
+            </section>
+
+            <section id="providers" className="casino-section">
+              <div className="casino-section-head">
+                <div>
+                  <span>Casino externo</span>
+                  <h2>Proveedores demo</h2>
+                </div>
+                <strong>Sin dinero real</strong>
+              </div>
+              <div className="provider-rows">
+                {providerRows.map((row) => (
+                  <section key={row.title} className="provider-row">
+                    <div className="provider-row-head">
+                      <div>
+                        <span>{row.provider}</span>
+                        <h3>{row.title}</h3>
+                      </div>
+                      <button type="button" disabled>
+                        Proximamente
+                      </button>
+                    </div>
+                    <div className="provider-game-list">
+                      {row.games.map((gameName) => (
+                        <ProviderGameCard
+                          key={gameName}
+                          name={gameName}
+                          accent={row.accent}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </section>
+          </>
         ) : (
-          <section className="lobby-layout">
-            <div className={`lobby-game-title-banner accent-${selectedGame.accent}`}>
-              <span>Juego seleccionado</span>
-              <h2>{selectedGame.name}</h2>
-              <p>{selectedGame.description}</p>
-            </div>
-            <div className="lobby-games compact">
-              {games.map((game) => (
-                <a
-                  key={game.id}
-                  href={createGameLink(game.id)}
-                  className={`lobby-game-card accent-${game.accent} ${game.id === selectedGame.id ? "is-selected" : ""}`}
-                >
-                  <GameArtwork gameId={game.id} />
-                  <span>{game.status}</span>
-                  <strong>{game.name}</strong>
-                  <small>{game.description}</small>
-                </a>
-              ))}
+          <section className="casino-tables-view">
+            <div className={`casino-game-banner accent-${selectedGame.accent}`}>
+              <GameArtwork game={selectedGame} />
+              <div>
+                <span>{selectedGame.status}</span>
+                <h1>{selectedGame.name}</h1>
+                <p>{selectedGame.description}</p>
+              </div>
             </div>
 
-            <section className="lobby-tables">
-              <div className="lobby-section-head">
+            <section className="casino-section">
+              <div className="casino-section-head">
                 <div>
                   <span>{selectedGame.name}</span>
                   <h2>Mesas disponibles</h2>
                 </div>
-                <div className="lobby-section-actions">
-                  <a href="/">Cambiar juego</a>
-                  <strong>{selectedGame.status}</strong>
-                </div>
+                <a href="/" className="casino-nav-button">
+                  Cambiar juego
+                </a>
               </div>
 
-            <div className={`lobby-feature accent-${selectedGame.accent}`}>
-              <GameArtwork gameId={selectedGame.id} />
-              <div>
-                <span>{selectedGame.name}</span>
-                <strong>{selectedGame.description}</strong>
+              <div className="casino-table-list">
+                {loading && (
+                  <div className="casino-empty">
+                    Cargando mesas...
+                  </div>
+                )}
+
+                {!loading && selectedGameTables.length === 0 && (
+                  <div className="casino-empty">
+                    <strong>No hay mesas creadas.</strong>
+                    <span>Crea una mesa de {selectedGame.name} desde Admin.</span>
+                  </div>
+                )}
+
+                {selectedGameTables.map((table) => {
+                  const players =
+                    table.players.filter((player) => player.status === "approved" || player.status === "seated");
+                  const freeChips =
+                    players.reduce((total, player) => total + player.chips, 0);
+
+                  return (
+                    <article key={table.id} className="casino-table-card">
+                      <div>
+                        <span>{getTableStatusLabel(table.status)}</span>
+                        <h3>{table.name}</h3>
+                        <p>{players.length} jugadores aprobados</p>
+                      </div>
+                      <div>
+                        <span>Pozo minimo</span>
+                        <strong>{formatMoney(table.minPot ?? 20000)} Gs</strong>
+                      </div>
+                      <div>
+                        <span>Saldos libres</span>
+                        <strong>{formatMoney(freeChips)} Gs</strong>
+                      </div>
+                      <a href={createTableLink(table.id)}>
+                        Entrar
+                      </a>
+                    </article>
+                  );
+                })}
               </div>
-            </div>
-
-            <div className="lobby-table-list">
-              {loading && (
-                <div className="lobby-empty">
-                  Cargando mesas...
-                </div>
-              )}
-
-              {!loading && selectedGameTables.length === 0 && (
-                <div className="lobby-empty">
-                  <strong>No hay mesas creadas.</strong>
-                  <span>Crea una mesa de {selectedGame.name} desde Admin.</span>
-                </div>
-              )}
-
-              {selectedGameTables.map((table) => {
-                const players =
-                  table.players.filter((player) => player.status === "approved" || player.status === "seated");
-                const freeChips =
-                  players.reduce((total, player) => total + player.chips, 0);
-
-                return (
-                  <article key={table.id} className="lobby-table-card">
-                    <div>
-                      <span>{getTableStatusLabel(table.status)}</span>
-                      <h3>{table.name}</h3>
-                      <p>{players.length} jugadores aprobados</p>
-                    </div>
-                    <div className="lobby-table-stats">
-                      <span>Pozo minimo</span>
-                      <strong>{formatMoney(table.minPot ?? 20000)} Gs</strong>
-                    </div>
-                    <div className="lobby-table-stats">
-                      <span>Saldos libres</span>
-                      <strong>{formatMoney(freeChips)} Gs</strong>
-                    </div>
-                    <a href={createTableLink(table.id)}>
-                      Entrar
-                    </a>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
+            </section>
           </section>
         )}
-
-        <p className="lobby-asset-credit">
-          Baraja espanola: Germarquezm, CC BY-SA 3.0, via Wikimedia Commons.
-        </p>
       </section>
     </main>
   );
