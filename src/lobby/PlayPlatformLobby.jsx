@@ -92,11 +92,35 @@ const bottomNavItems = [
   ["Perfil", "#profile", "◎"],
 ];
 
-const demoMovements = [
-  ["Carga demo", "+150.000 Gs", "Aprobado"],
-  ["PASE mesa VIP", "-20.000 Gs", "Apuesta"],
-  ["Premio PASE", "+40.000 Gs", "Ganancia"],
+const defaultDemoMovements = [
+  {
+    id: "initial-credit",
+    label: "Carga demo",
+    amount: 150000,
+    status: "Aprobado",
+    type: "credit",
+  },
+  {
+    id: "initial-bet",
+    label: "PASE mesa VIP",
+    amount: -20000,
+    status: "Apuesta",
+    type: "debit",
+  },
+  {
+    id: "initial-win",
+    label: "Premio PASE",
+    amount: 40000,
+    status: "Ganancia",
+    type: "credit",
+  },
 ];
+
+const defaultWallet = {
+  balance: 250000,
+  bonus: 20000,
+  movements: defaultDemoMovements,
+};
 
 function getGameIdFromPath() {
   const match =
@@ -114,6 +138,34 @@ function getViewFromHash() {
   }
 
   return "home";
+}
+
+function loadDemoWallet() {
+  try {
+    const storedWallet =
+      window.localStorage.getItem("play-casino-demo-wallet");
+
+    if (!storedWallet) {
+      return defaultWallet;
+    }
+
+    const parsedWallet =
+      JSON.parse(storedWallet);
+
+    return {
+      balance: Number(parsedWallet.balance) || defaultWallet.balance,
+      bonus: Number(parsedWallet.bonus) || defaultWallet.bonus,
+      movements: Array.isArray(parsedWallet.movements) && parsedWallet.movements.length > 0 ?
+        parsedWallet.movements :
+        defaultDemoMovements,
+    };
+  } catch {
+    return defaultWallet;
+  }
+}
+
+function saveDemoWallet(wallet) {
+  window.localStorage.setItem("play-casino-demo-wallet", JSON.stringify(wallet));
 }
 
 function createGameLink(gameId) {
@@ -188,6 +240,7 @@ function PlayPlatformLobby() {
   const [slotSearch, setSlotSearch] = useState("");
   const [providerFilter, setProviderFilter] = useState("all");
   const [selectedProviderGame, setSelectedProviderGame] = useState(null);
+  const [demoWallet, setDemoWallet] = useState(() => loadDemoWallet());
   const selectedGame =
     playOriginals.find((game) => game.id === routeGameId) ?? null;
   const selectedGameTables =
@@ -205,6 +258,8 @@ function PlayPlatformLobby() {
     liveTables.reduce((total, table) => (
       total + table.players.reduce((sum, player) => sum + (Number(player.chips) || 0), 0)
     ), 0);
+  const displayBalance =
+    demoWallet.balance + totalChips;
   const filteredProviderGames =
     useMemo(() => {
       const query =
@@ -296,6 +351,36 @@ function PlayPlatformLobby() {
     await supabase.auth.signOut();
   };
 
+  const addDemoWalletMovement = ({
+    label,
+    amount,
+    status,
+    type,
+  }) => {
+    setDemoWallet((currentWallet) => {
+      const nextBalance =
+        Math.max(0, currentWallet.balance + amount);
+      const nextWallet = {
+        ...currentWallet,
+        balance: nextBalance,
+        movements: [
+          {
+            id: crypto.randomUUID(),
+            label,
+            amount,
+            status,
+            type,
+          },
+          ...currentWallet.movements,
+        ].slice(0, 8),
+      };
+
+      saveDemoWallet(nextWallet);
+
+      return nextWallet;
+    });
+  };
+
   useEffect(() => {
     const syncHashView = () => {
       setActiveView(getViewFromHash());
@@ -377,7 +462,7 @@ function PlayPlatformLobby() {
               </div>
               <div className="casino-balance-card">
                 <span>Saldo demo</span>
-                <strong>{formatMoney(totalChips || 250000)} Gs</strong>
+                <strong>{formatMoney(displayBalance)} Gs</strong>
                 <small>{activePlayers} jugadores activos</small>
               </div>
             </section>
@@ -530,17 +615,54 @@ function PlayPlatformLobby() {
               <div className="casino-profile-grid">
                 <div className="casino-wallet-panel">
                   <span>Saldo disponible</span>
-                  <strong>{formatMoney(totalChips || 250000)} Gs</strong>
-                  <small>Saldo de demostracion para probar la plataforma.</small>
+                  <strong>{formatMoney(displayBalance)} Gs</strong>
+                  <small>Bono demo: {formatMoney(demoWallet.bonus)} Gs</small>
+                  <div className="casino-wallet-actions">
+                    <button
+                      type="button"
+                      onClick={() => addDemoWalletMovement({
+                        label: "Deposito demo",
+                        amount: 50000,
+                        status: "Aprobado",
+                        type: "credit",
+                      })}
+                    >
+                      Depositar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addDemoWalletMovement({
+                        label: "Retiro demo",
+                        amount: -20000,
+                        status: "Solicitado",
+                        type: "debit",
+                      })}
+                    >
+                      Retirar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addDemoWalletMovement({
+                        label: "Bono PLAY",
+                        amount: 10000,
+                        status: "Bono",
+                        type: "credit",
+                      })}
+                    >
+                      Bono
+                    </button>
+                  </div>
                 </div>
                 <div className="casino-movement-list">
-                  {demoMovements.map(([label, amount, status]) => (
-                    <article key={label}>
+                  {demoWallet.movements.map((movement) => (
+                    <article key={movement.id}>
                       <div>
-                        <strong>{label}</strong>
-                        <span>{status}</span>
+                        <strong>{movement.label}</strong>
+                        <span>{movement.status}</span>
                       </div>
-                      <b>{amount}</b>
+                      <b className={movement.type === "debit" ? "is-debit" : ""}>
+                        {movement.amount > 0 ? "+" : ""}{formatMoney(movement.amount)} Gs
+                      </b>
                     </article>
                   ))}
                 </div>

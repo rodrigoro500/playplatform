@@ -637,6 +637,33 @@
   font-size: 34px;
 }
 
+.casino-wallet-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.casino-wallet-actions button {
+  min-width: 0;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #d1fae5;
+  cursor: pointer;
+  padding: 11px 8px;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.casino-wallet-actions button:first-child {
+  border-color: rgba(250, 204, 21, 0.46);
+  background: linear-gradient(135deg, #fde047, #f97316);
+  color: #111827;
+}
+
 .casino-movement-list {
   display: grid;
   gap: 10px;
@@ -662,6 +689,10 @@
 .casino-movement-list b {
   color: #34d399;
   font-size: 16px;
+}
+
+.casino-movement-list b.is-debit {
+  color: #fb7185;
 }
 
 .casino-bottom-nav {
