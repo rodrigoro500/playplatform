@@ -390,7 +390,10 @@
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.82);
+  color: #f8fafc;
+  cursor: pointer;
   padding: 12px;
+  text-align: left;
 }
 
 .provider-game-card::before {
@@ -412,6 +415,10 @@
   background: linear-gradient(145deg, #8b5cf6, transparent 62%);
 }
 
+.provider-game-card.accent-green::before {
+  background: linear-gradient(145deg, #10b981, transparent 62%);
+}
+
 .provider-game-card > * {
   position: relative;
 }
@@ -429,6 +436,85 @@
 
 .provider-game-card strong {
   font-size: 16px;
+}
+
+.provider-game-card small {
+  position: relative;
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.provider-game-list.expanded {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.casino-slot-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.casino-slot-toolbar label {
+  display: grid;
+  gap: 7px;
+}
+
+.casino-slot-toolbar label span {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.casino-slot-toolbar input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.34);
+  color: #f8fafc;
+  outline: none;
+  padding: 13px 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.casino-slot-toolbar input:focus {
+  border-color: rgba(250, 204, 21, 0.55);
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.12);
+}
+
+.casino-provider-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.casino-provider-tabs button {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.casino-provider-tabs button.is-active {
+  border-color: rgba(250, 204, 21, 0.52);
+  background: linear-gradient(135deg, #fde047, #f97316);
+  color: #111827;
 }
 
 .casino-tables-view {
@@ -628,6 +714,107 @@
   white-space: nowrap;
 }
 
+.casino-game-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: end center;
+  background: rgba(2, 6, 23, 0.72);
+  padding: 18px;
+}
+
+.casino-game-modal-card {
+  position: relative;
+  display: grid;
+  width: min(720px, 100%);
+  grid-template-columns: minmax(170px, 240px) minmax(0, 1fr);
+  gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(3, 7, 18, 0.96);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.54);
+  padding: 14px;
+}
+
+.casino-game-modal-card .provider-game-card {
+  min-height: 220px;
+  cursor: default;
+}
+
+.casino-modal-close {
+  position: absolute;
+  top: -12px;
+  right: -8px;
+  z-index: 2;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: #020617;
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.casino-game-modal-copy {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+}
+
+.casino-game-modal-copy span,
+.casino-game-facts span {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.casino-game-modal-copy h2 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.casino-game-modal-copy p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.casino-game-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.casino-game-facts span {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 7px 9px;
+}
+
+.casino-game-modal-copy button {
+  justify-self: start;
+  border: 1px solid rgba(250, 204, 21, 0.34);
+  border-radius: 8px;
+  background: rgba(250, 204, 21, 0.1);
+  color: #facc15;
+  cursor: not-allowed;
+  padding: 11px 13px;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 860px) {
   .casino-hero,
   .casino-game-banner {
@@ -640,8 +827,10 @@
 
   .casino-category-grid,
   .provider-game-list,
+  .provider-game-list.expanded,
   .casino-live-grid,
-  .casino-profile-grid {
+  .casino-profile-grid,
+  .casino-slot-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -683,10 +872,21 @@
   .casino-originals-grid,
   .casino-category-grid,
   .provider-game-list,
+  .provider-game-list.expanded,
   .casino-live-grid,
   .casino-profile-grid,
+  .casino-slot-toolbar,
+  .casino-game-modal-card,
   .casino-table-card {
     grid-template-columns: 1fr;
+  }
+
+  .casino-game-modal {
+    padding: 10px;
+  }
+
+  .casino-game-modal-copy h2 {
+    font-size: 28px;
   }
 
   .casino-original-card {

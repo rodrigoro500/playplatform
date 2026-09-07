@@ -38,24 +38,44 @@ const playOriginals = [
 
 const providerRows = [
   {
+    id: "pragmatic",
     title: "Pragmatic Play",
     provider: "Demo provider",
     accent: "red",
-    games: ["Wolf Gold", "Sweet Bonanza", "Gates of Olympus", "Sugar Rush"],
+    games: ["Wolf Gold", "Sweet Bonanza", "Gates of Olympus", "Sugar Rush", "Big Bass Bonanza", "The Dog House"],
   },
   {
+    id: "amatic",
     title: "Amatic",
     provider: "Demo provider",
     accent: "blue",
-    games: ["Hot Fruits", "Book of Aztec", "Lucky Bells", "Wild Shark"],
+    games: ["Hot Fruits", "Book of Aztec", "Lucky Bells", "Wild Shark", "Diamond Cats", "All Ways Fruits"],
   },
   {
+    id: "wazdan",
     title: "Wazdan",
     provider: "Demo provider",
     accent: "violet",
-    games: ["Magic Stars", "Power of Gods", "Sizzling 777", "Burning Sun"],
+    games: ["Magic Stars", "Power of Gods", "Sizzling 777", "Burning Sun", "9 Lions", "Hot Slot"],
+  },
+  {
+    id: "cq9",
+    title: "CQ9",
+    provider: "Demo provider",
+    accent: "green",
+    games: ["Fa Cai Shen", "Lucky Bats", "God of War", "Jump High", "Thor", "Zeus"],
   },
 ];
+
+const allProviderGames =
+  providerRows.flatMap((row) => row.games.map((name, index) => ({
+    id: `${row.id}-${index}`,
+    name,
+    providerId: row.id,
+    providerName: row.title,
+    accent: row.accent,
+    volatility: index % 3 === 0 ? "Alta" : index % 3 === 1 ? "Media" : "Baja",
+  })));
 
 const categories = [
   ["Slots", "Proveedores demo", "126 juegos", "#slots"],
@@ -131,17 +151,29 @@ function GameArtwork({
 }
 
 function ProviderGameCard({
+  game,
   name,
   accent,
+  onSelect,
 }) {
+  const gameName =
+    game?.name ?? name;
+  const gameAccent =
+    game?.accent ?? accent;
+
   return (
-    <article className={`provider-game-card accent-${accent}`}>
+    <button
+      type="button"
+      className={`provider-game-card accent-${gameAccent}`}
+      onClick={() => onSelect?.(game)}
+    >
       <div className="provider-game-mark">
-        {name.split(" ").map((word) => word[0]).join("").slice(0, 2)}
+        {gameName.split(" ").map((word) => word[0]).join("").slice(0, 2)}
       </div>
-      <strong>{name}</strong>
+      <strong>{gameName}</strong>
+      {game?.providerName && <small>{game.providerName}</small>}
       <span>Demo</span>
-    </article>
+    </button>
   );
 }
 
@@ -153,6 +185,9 @@ function PlayPlatformLobby() {
   const [message, setMessage] = useState("");
   const [session, setSession] = useState(null);
   const [activeView, setActiveView] = useState(() => getViewFromHash());
+  const [slotSearch, setSlotSearch] = useState("");
+  const [providerFilter, setProviderFilter] = useState("all");
+  const [selectedProviderGame, setSelectedProviderGame] = useState(null);
   const selectedGame =
     playOriginals.find((game) => game.id === routeGameId) ?? null;
   const selectedGameTables =
@@ -170,6 +205,22 @@ function PlayPlatformLobby() {
     liveTables.reduce((total, table) => (
       total + table.players.reduce((sum, player) => sum + (Number(player.chips) || 0), 0)
     ), 0);
+  const filteredProviderGames =
+    useMemo(() => {
+      const query =
+        slotSearch.trim().toLowerCase();
+
+      return allProviderGames.filter((game) => {
+        const matchesProvider =
+          providerFilter === "all" || game.providerId === providerFilter;
+        const matchesSearch =
+          !query ||
+          game.name.toLowerCase().includes(query) ||
+          game.providerName.toLowerCase().includes(query);
+
+        return matchesProvider && matchesSearch;
+      });
+    }, [providerFilter, slotSearch]);
 
   useEffect(() => {
     let isMounted = true;
@@ -379,6 +430,49 @@ function PlayPlatformLobby() {
                 </div>
                 <strong>Sin dinero real</strong>
               </div>
+              {showSlots && (
+                <div className="casino-slot-toolbar">
+                  <label>
+                    <span>Buscar juego</span>
+                    <input
+                      value={slotSearch}
+                      onChange={(event) => setSlotSearch(event.target.value)}
+                      placeholder="Wolf, Gates, Hot..."
+                    />
+                  </label>
+                  <div className="casino-provider-tabs">
+                    <button
+                      type="button"
+                      className={providerFilter === "all" ? "is-active" : ""}
+                      onClick={() => setProviderFilter("all")}
+                    >
+                      Todos
+                    </button>
+                    {providerRows.map((row) => (
+                      <button
+                        key={row.id}
+                        type="button"
+                        className={providerFilter === row.id ? "is-active" : ""}
+                        onClick={() => setProviderFilter(row.id)}
+                      >
+                        {row.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showSlots ? (
+                <div className="provider-game-list expanded">
+                  {filteredProviderGames.map((game) => (
+                    <ProviderGameCard
+                      key={game.id}
+                      game={game}
+                      onSelect={setSelectedProviderGame}
+                    />
+                  ))}
+                </div>
+              ) : (
               <div className="provider-rows">
                 {providerRows.map((row) => (
                   <section key={row.title} className="provider-row">
@@ -395,14 +489,15 @@ function PlayPlatformLobby() {
                       {row.games.map((gameName) => (
                         <ProviderGameCard
                           key={gameName}
-                          name={gameName}
-                          accent={row.accent}
+                          game={allProviderGames.find((game) => game.name === gameName && game.providerId === row.id)}
+                          onSelect={setSelectedProviderGame}
                         />
                       ))}
                     </div>
                   </section>
                 ))}
               </div>
+              )}
             </section>
             )}
 
@@ -534,6 +629,34 @@ function PlayPlatformLobby() {
             </a>
           ))}
         </nav>
+      )}
+      {selectedProviderGame && (
+        <div className="casino-game-modal" role="dialog" aria-modal="true">
+          <div className="casino-game-modal-card">
+            <button
+              type="button"
+              className="casino-modal-close"
+              onClick={() => setSelectedProviderGame(null)}
+              aria-label="Cerrar"
+            >
+              ×
+            </button>
+            <ProviderGameCard game={selectedProviderGame} />
+            <div className="casino-game-modal-copy">
+              <span>{selectedProviderGame.providerName}</span>
+              <h2>{selectedProviderGame.name}</h2>
+              <p>Juego de demostracion preparado para la futura API de agregador.</p>
+              <div className="casino-game-facts">
+                <span>Modo demo</span>
+                <span>Volatilidad {selectedProviderGame.volatility}</span>
+                <span>Wallet externa futura</span>
+              </div>
+              <button type="button" disabled>
+                Integracion pendiente
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
