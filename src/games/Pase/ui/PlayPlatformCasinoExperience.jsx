@@ -10,6 +10,7 @@ import PaseCasinoDemoRuntime, {
 import {
   fetchGameSnapshot,
   fetchTableById,
+  findInvite,
   hasSupabaseConfig,
   requestTableSeat,
   saveGameSnapshot,
@@ -128,6 +129,26 @@ function getTableIdFromUrl() {
 
 function getPlayerIdFromUrl() {
   return new URLSearchParams(window.location.search).get("player");
+}
+
+function getInviteCodeFromUrl() {
+  return new URLSearchParams(window.location.search).get("invite");
+}
+
+function getStoredPlayerId(tableId) {
+  if (!tableId) {
+    return "";
+  }
+
+  return window.localStorage.getItem(`playplatform-table-player-${tableId}`) ?? "";
+}
+
+function storePlayerId(tableId, playerId) {
+  if (!tableId || !playerId) {
+    return;
+  }
+
+  window.localStorage.setItem(`playplatform-table-player-${tableId}`, playerId);
 }
 
 function getTableShareUrl(tableId) {
@@ -1353,7 +1374,11 @@ function BottomBar({
 function PlayPlatformCasinoExperience() {
   const tableId = useMemo(() => getTableIdFromUrl(), []);
   const urlPlayerId = useMemo(() => getPlayerIdFromUrl(), []);
-  const isLivePlayer = Boolean(tableId && urlPlayerId);
+  const inviteCode = useMemo(() => getInviteCodeFromUrl(), []);
+  const storedPlayerId = useMemo(() => getStoredPlayerId(tableId), [tableId]);
+  const [resolvedLivePlayerId, setResolvedLivePlayerId] = useState(() => (
+    tableId ? storedPlayerId || urlPlayerId || "" : ""
+  ));
   const runtimeRef = useRef(null);
   if (runtimeRef.current === null) {
     runtimeRef.current = new PaseCasinoDemoRuntime({
@@ -1397,11 +1422,12 @@ function PlayPlatformCasinoExperience() {
   const remoteRolling =
     table.phase === "ROLLING_DICE";
   const currentPlayerId =
-    isLivePlayer ? urlPlayerId : selectedQuickBetPlayer;
+    tableId ? resolvedLivePlayerId : selectedQuickBetPlayer;
+  const isLivePlayer = Boolean(tableId && currentPlayerId);
   const accountPlayer =
-    players.find((player) => player.id === currentPlayerId) ?? players[0] ?? null;
+    players.find((player) => player.id === currentPlayerId) ?? (!tableId ? players[0] ?? null : null);
   const isCurrentApprovedPlayer =
-    Boolean(tableId && urlPlayerId && players.some((player) => player.id === urlPlayerId));
+    Boolean(tableId && currentPlayerId && players.some((player) => player.id === currentPlayerId));
   const canRequestSeat =
     Boolean(tableId && !isCurrentApprovedPlayer && players.length < 8);
   const quickBetStatus =
@@ -1415,6 +1441,7 @@ function PlayPlatformCasinoExperience() {
   const canConfirmQuickBet =
     quickBetPhase !== "BALANCING" &&
     table.phase !== "ROLLING_DICE" &&
+    Boolean(currentPlayerId) &&
     Boolean(accountPlayer) &&
     selectedAmountValue >= 1000 &&
     selectedAmountValue <= (accountPlayer?.wallet ?? 0);
@@ -1591,10 +1618,35 @@ function PlayPlatformCasinoExperience() {
           sumLoadedTableChips(nextLiveTable?.transactions);
         const firstPlayerId =
           runtimePlayers[0]?.id ?? "";
+        let invitePlayerId = "";
+
+        if (inviteCode) {
+          try {
+            const invite =
+              await findInvite(inviteCode);
+            const inviteBelongsToTable =
+              invite?.table_id === tableId;
+            const claimedPlayerId =
+              invite?.table_players?.[0]?.id ?? "";
+
+            if (inviteBelongsToTable && claimedPlayerId) {
+              invitePlayerId = claimedPlayerId;
+            }
+          } catch {
+            invitePlayerId = "";
+          }
+        }
+
+        const candidatePlayerIds = [
+          invitePlayerId,
+          urlPlayerId,
+          resolvedLivePlayerId,
+          storedPlayerId,
+        ].filter(Boolean);
         const selectedLivePlayerId =
-          runtimePlayers.some((player) => player.id === urlPlayerId) ?
-            urlPlayerId :
-            firstPlayerId;
+          candidatePlayerIds.find((playerId) => (
+            runtimePlayers.some((player) => player.id === playerId)
+          )) ?? "";
 
         if (!isMounted) {
           return;
@@ -1621,6 +1673,10 @@ function PlayPlatformCasinoExperience() {
         }
 
         setLiveTable(nextLiveTable);
+        setResolvedLivePlayerId(selectedLivePlayerId);
+        if (selectedLivePlayerId) {
+          storePlayerId(tableId, selectedLivePlayerId);
+        }
         if (shouldResetRuntime) {
           setSelectedShooter(firstPlayerId);
           setSelectedQuickBetPlayer(selectedLivePlayerId);
@@ -1637,9 +1693,11 @@ function PlayPlatformCasinoExperience() {
           }
         }
         setLiveTableStatus(
-          runtimePlayers.length > 0 ?
+          runtimePlayers.length === 0 ?
+            "Mesa libre: esperando jugadores aprobados" :
+          selectedLivePlayerId ?
             "Mesa real lista" :
-            "Mesa libre: esperando jugadores aprobados"
+            "Mesa real lista. Abre tu enlace personal de invitacion para apostar."
         );
       } catch (error) {
         if (isMounted) {
@@ -1656,7 +1714,7 @@ function PlayPlatformCasinoExperience() {
       isMounted = false;
       window.clearInterval(refreshTimerId);
     };
-  }, [tableId, urlPlayerId]);
+  }, [inviteCode, resolvedLivePlayerId, storedPlayerId, tableId, urlPlayerId]);
 
   useEffect(() => {
     if (!tableId) {
@@ -2154,3 +2212,4 @@ export {
 };
 
 export default PlayPlatformCasinoExperience;
+

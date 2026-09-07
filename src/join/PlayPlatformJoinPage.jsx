@@ -27,7 +27,9 @@ function PlayPlatformJoinPage() {
   const invitePlayerId =
     invite?.table_players?.[0]?.id ?? playerId;
   const tableLink =
-    invite?.table_id ? `/?table=${invite.table_id}${invitePlayerId ? `&player=${invitePlayerId}` : ""}` : "/";
+    invite?.table_id ?
+      `/?table=${invite.table_id}&invite=${encodeURIComponent(inviteCode ?? "")}${invitePlayerId ? `&player=${invitePlayerId}` : ""}` :
+      "/";
 
   useEffect(() => {
     async function loadInvite() {
