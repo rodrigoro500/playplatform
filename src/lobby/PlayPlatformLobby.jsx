@@ -58,10 +58,24 @@ const providerRows = [
 ];
 
 const categories = [
-  ["Slots", "Proveedores demo", "126 juegos"],
-  ["Casino en vivo", "Proxima fase", "Ruleta y blackjack"],
-  ["PLAY", "Juegos propios", "PASE y MAKAI"],
-  ["Promos", "Bonos demo", "Sin dinero real"],
+  ["Slots", "Proveedores demo", "126 juegos", "#slots"],
+  ["Casino en vivo", "Proxima fase", "Ruleta y blackjack", "#live"],
+  ["PLAY", "Juegos propios", "PASE y MAKAI", "#play"],
+  ["Perfil", "Wallet demo", "Cuenta y movimientos", "#profile"],
+];
+
+const bottomNavItems = [
+  ["Inicio", "#home", "⌂"],
+  ["Slots", "#slots", "▦"],
+  ["PLAY", "#play", "◆"],
+  ["En Vivo", "#live", "◉"],
+  ["Perfil", "#profile", "◎"],
+];
+
+const demoMovements = [
+  ["Carga demo", "+150.000 Gs", "Aprobado"],
+  ["PASE mesa VIP", "-20.000 Gs", "Apuesta"],
+  ["Premio PASE", "+40.000 Gs", "Ganancia"],
 ];
 
 function getGameIdFromPath() {
@@ -69,6 +83,17 @@ function getGameIdFromPath() {
     window.location.pathname.match(/^\/games\/([^/]+)/);
 
   return match?.[1]?.toUpperCase() ?? null;
+}
+
+function getViewFromHash() {
+  const hash =
+    window.location.hash.replace("#", "");
+
+  if (["slots", "play", "live", "profile"].includes(hash)) {
+    return hash;
+  }
+
+  return "home";
 }
 
 function createGameLink(gameId) {
@@ -127,6 +152,7 @@ function PlayPlatformLobby() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [session, setSession] = useState(null);
+  const [activeView, setActiveView] = useState(() => getViewFromHash());
   const selectedGame =
     playOriginals.find((game) => game.id === routeGameId) ?? null;
   const selectedGameTables =
@@ -219,6 +245,29 @@ function PlayPlatformLobby() {
     await supabase.auth.signOut();
   };
 
+  useEffect(() => {
+    const syncHashView = () => {
+      setActiveView(getViewFromHash());
+    };
+
+    window.addEventListener("hashchange", syncHashView);
+
+    return () => {
+      window.removeEventListener("hashchange", syncHashView);
+    };
+  }, []);
+
+  const showHome =
+    !selectedGame && activeView === "home";
+  const showSlots =
+    !selectedGame && activeView === "slots";
+  const showPlay =
+    !selectedGame && activeView === "play";
+  const showLive =
+    !selectedGame && activeView === "live";
+  const showProfile =
+    !selectedGame && activeView === "profile";
+
   return (
     <main className="casino-lobby-screen">
       <section className="casino-lobby-shell">
@@ -262,7 +311,8 @@ function PlayPlatformLobby() {
 
         {!selectedGame ? (
           <>
-            <section className="casino-hero">
+            {showHome && (
+            <section id="home" className="casino-hero">
               <div className="casino-hero-copy">
                 <span>PLAY Ecosystem</span>
                 <h1>PLAY Casino</h1>
@@ -270,8 +320,8 @@ function PlayPlatformLobby() {
                   Lobby mobile-first para juegos propios, mesas en vivo y futuros proveedores externos.
                 </p>
                 <div className="casino-hero-actions">
-                  <a href="#play-originals">Juegos PLAY</a>
-                  <a href="#providers">Proveedores demo</a>
+                  <a href="#play">Juegos PLAY</a>
+                  <a href="#slots">Slots demo</a>
                 </div>
               </div>
               <div className="casino-balance-card">
@@ -280,18 +330,22 @@ function PlayPlatformLobby() {
                 <small>{activePlayers} jugadores activos</small>
               </div>
             </section>
+            )}
 
+            {showHome && (
             <section className="casino-category-grid">
-              {categories.map(([title, label, value]) => (
-                <article key={title} className="casino-category">
+              {categories.map(([title, label, value, href]) => (
+                <a key={title} href={href} className="casino-category">
                   <span>{label}</span>
                   <strong>{title}</strong>
                   <small>{value}</small>
-                </article>
+                </a>
               ))}
             </section>
+            )}
 
-            <section id="play-originals" className="casino-section">
+            {(showHome || showPlay) && (
+            <section id="play" className="casino-section">
               <div className="casino-section-head">
                 <div>
                   <span>PLAY Originals</span>
@@ -314,12 +368,14 @@ function PlayPlatformLobby() {
                 ))}
               </div>
             </section>
+            )}
 
-            <section id="providers" className="casino-section">
+            {(showHome || showSlots) && (
+            <section id="slots" className="casino-section">
               <div className="casino-section-head">
                 <div>
                   <span>Casino externo</span>
-                  <h2>Proveedores demo</h2>
+                  <h2>Slots demo</h2>
                 </div>
                 <strong>Sin dinero real</strong>
               </div>
@@ -348,6 +404,54 @@ function PlayPlatformLobby() {
                 ))}
               </div>
             </section>
+            )}
+
+            {showLive && (
+            <section id="live" className="casino-section casino-coming-soon">
+              <div className="casino-section-head">
+                <div>
+                  <span>Proxima fase</span>
+                  <h2>Casino en vivo</h2>
+                </div>
+                <strong>Preparado</strong>
+              </div>
+              <div className="casino-live-grid">
+                {["Ruleta en vivo", "Blackjack", "Baccarat", "Game shows"].map((name) => (
+                  <ProviderGameCard key={name} name={name} accent="blue" />
+                ))}
+              </div>
+            </section>
+            )}
+
+            {showProfile && (
+            <section id="profile" className="casino-section casino-profile">
+              <div className="casino-section-head">
+                <div>
+                  <span>Cuenta PLAY</span>
+                  <h2>Perfil y wallet demo</h2>
+                </div>
+                <strong>{session ? "Sesion activa" : "Invitado"}</strong>
+              </div>
+              <div className="casino-profile-grid">
+                <div className="casino-wallet-panel">
+                  <span>Saldo disponible</span>
+                  <strong>{formatMoney(totalChips || 250000)} Gs</strong>
+                  <small>Saldo de demostracion para probar la plataforma.</small>
+                </div>
+                <div className="casino-movement-list">
+                  {demoMovements.map(([label, amount, status]) => (
+                    <article key={label}>
+                      <div>
+                        <strong>{label}</strong>
+                        <span>{status}</span>
+                      </div>
+                      <b>{amount}</b>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </section>
+            )}
           </>
         ) : (
           <section className="casino-tables-view">
@@ -417,6 +521,20 @@ function PlayPlatformLobby() {
           </section>
         )}
       </section>
+      {!selectedGame && (
+        <nav className="casino-bottom-nav" aria-label="Navegacion PLAY Casino">
+          {bottomNavItems.map(([label, href, icon]) => (
+            <a
+              key={label}
+              href={href}
+              className={activeView === href.slice(1) ? "is-active" : ""}
+            >
+              <span>{icon}</span>
+              <strong>{label}</strong>
+            </a>
+          ))}
+        </nav>
+      )}
     </main>
   );
 }
