@@ -123,6 +123,43 @@ function PlayPlatformLoginPage() {
     setMessage("Sesion cerrada.");
   };
 
+  const resendConfirmation = async () => {
+    if (!hasSupabaseConfig || !supabase) {
+      setMessage("Falta configurar Supabase.");
+      return;
+    }
+
+    if (!email.trim() || !email.includes("@")) {
+      setMessage("Ingresa tu email para reenviar la confirmacion.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const {
+        error,
+      } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setMessage("Te reenviamos el correo de confirmacion. Revisa entrada, spam y correo no deseado.");
+    } catch (error) {
+      setMessage(`No se pudo reenviar: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <main className="login-screen">
       <section className="login-shell">
@@ -208,6 +245,16 @@ function PlayPlatformLoginPage() {
                 <button type="submit" disabled={saving}>
                   {saving ? "Procesando..." : mode === "register" ? "Crear cuenta" : "Entrar"}
                 </button>
+                {mode === "register" && (
+                  <button
+                    type="button"
+                    className="login-secondary-action"
+                    onClick={resendConfirmation}
+                    disabled={saving}
+                  >
+                    Reenviar confirmacion
+                  </button>
+                )}
               </form>
             </>
           )}
