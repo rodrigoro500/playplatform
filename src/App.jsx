@@ -13,6 +13,10 @@ function App() {
     return <PlayPlatformAdminPanel />;
   }
 
+  if (window.location.pathname === "/super-admin") {
+    return <PlayPlatformAdminPanel initialView="super" />;
+  }
+
   if (window.location.pathname === "/join") {
     return <PlayPlatformJoinPage />;
   }

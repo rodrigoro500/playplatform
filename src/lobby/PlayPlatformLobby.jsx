@@ -421,9 +421,6 @@ function PlayPlatformLobby() {
                 Inicio
               </a>
             )}
-            <a href="/admin" className="casino-nav-button">
-              Admin
-            </a>
             {session ? (
               <div className="casino-account">
                 <span>{session.user.email}</span>

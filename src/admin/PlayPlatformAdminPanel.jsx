@@ -151,11 +151,11 @@ function buildChipAudit(table, freeChips) {
   };
 }
 
-function PlayPlatformAdminPanel() {
+function PlayPlatformAdminPanel({ initialView = "tables" }) {
   const [tables, setTables] = useState([]);
   const [platformAccounts, setPlatformAccounts] = useState([]);
   const [selectedTableId, setSelectedTableId] = useState(null);
-  const [adminView, setAdminView] = useState("tables");
+  const [adminView, setAdminView] = useState(initialView);
   const [newTableName, setNewTableName] = useState("Pase VIP");
   const [newTableGameType, setNewTableGameType] = useState("PASE");
   const [chipAmount, setChipAmount] = useState(50000);
