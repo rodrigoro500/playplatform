@@ -7,12 +7,16 @@ import {
   formatMoney,
 } from "../games/Pase/ui/PaseCasinoDemoRuntime";
 import {
+  adjustBalanceLoaderCredit,
   approvePlayerChips,
+  createPlatformAccount,
   createInvite,
   createTable,
   deletePlayer,
+  fetchPlatformAccounts,
   fetchTables,
   hasSupabaseConfig,
+  updatePlatformAccountStatus,
   updatePlayerVoice,
 } from "../lib/playPlatformDataService";
 import "./PlayPlatformAdminPanel.css";
@@ -54,6 +58,25 @@ function getStatusLabel(status) {
     pending: "Pendiente",
     pending_approval: "Pendiente",
     seated: "Sentado",
+  };
+
+  return labels[status] ?? status;
+}
+
+function getRoleLabel(role) {
+  const labels = {
+    balance_loader: "Cargador",
+    player: "Jugador",
+    super_admin: "Super Admin",
+  };
+
+  return labels[role] ?? role;
+}
+
+function getAccountStatusLabel(status) {
+  const labels = {
+    active: "Activo",
+    suspended: "Suspendido",
   };
 
   return labels[status] ?? status;
@@ -130,11 +153,19 @@ function buildChipAudit(table, freeChips) {
 
 function PlayPlatformAdminPanel() {
   const [tables, setTables] = useState([]);
+  const [platformAccounts, setPlatformAccounts] = useState([]);
   const [selectedTableId, setSelectedTableId] = useState(null);
+  const [adminView, setAdminView] = useState("tables");
   const [newTableName, setNewTableName] = useState("Pase VIP");
   const [newTableGameType, setNewTableGameType] = useState("PASE");
   const [chipAmount, setChipAmount] = useState(50000);
+  const [accountName, setAccountName] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountRole, setAccountRole] = useState("balance_loader");
+  const [accountCreditLimit, setAccountCreditLimit] = useState(500000);
+  const [creditTopUpAmount, setCreditTopUpAmount] = useState(100000);
   const [loading, setLoading] = useState(true);
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const selectedTable =
@@ -152,6 +183,13 @@ function PlayPlatformAdminPanel() {
     ), [selectedTable?.players]);
   const chipAudit =
     useMemo(() => buildChipAudit(selectedTable, totalChips), [selectedTable, totalChips]);
+  const accountSummary =
+    useMemo(() => ({
+      superAdmins: platformAccounts.filter((account) => account.role === "super_admin").length,
+      balanceLoaders: platformAccounts.filter((account) => account.role === "balance_loader").length,
+      players: platformAccounts.filter((account) => account.role === "player").length,
+      availableCredit: platformAccounts.reduce((total, account) => total + (Number(account.availableCredit) || 0), 0),
+    }), [platformAccounts]);
 
   const loadTables = async ({
     silent = false,
@@ -181,12 +219,42 @@ function PlayPlatformAdminPanel() {
     }
   };
 
+  const loadPlatformAccounts = async ({
+    silent = false,
+  } = {}) => {
+    if (!silent) {
+      setAccountsLoading(true);
+    }
+
+    try {
+      const nextAccounts =
+        await fetchPlatformAccounts();
+      setPlatformAccounts(nextAccounts);
+    } catch (error) {
+      if (!silent) {
+        setMessage(
+          `No se pudieron cargar cuentas Super Admin: ${error.message}. Ejecuta el SQL actualizado en Supabase.`
+        );
+      }
+    } finally {
+      if (!silent) {
+        setAccountsLoading(false);
+      }
+    }
+  };
+
   useEffect(() => {
     loadTables();
+    loadPlatformAccounts();
     const refreshTimerId =
-      window.setInterval(() => loadTables({
-        silent: true,
-      }), 4000);
+      window.setInterval(() => {
+        loadTables({
+          silent: true,
+        });
+        loadPlatformAccounts({
+          silent: true,
+        });
+      }, 4000);
 
     return () => window.clearInterval(refreshTimerId);
   }, []);
@@ -203,6 +271,62 @@ function PlayPlatformAdminPanel() {
       setMessage("Mesa creada correctamente.");
     } catch (error) {
       setMessage(`No se pudo crear la mesa: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateAccount = async () => {
+    setSaving(true);
+    setMessage("");
+
+    try {
+      await createPlatformAccount({
+        displayName: accountName,
+        email: accountEmail,
+        role: accountRole,
+        creditLimit: accountCreditLimit,
+      });
+      setAccountName("");
+      setAccountEmail("");
+      setAccountCreditLimit(500000);
+      await loadPlatformAccounts();
+      setMessage("Cuenta operativa creada correctamente.");
+    } catch (error) {
+      setMessage(`No se pudo crear la cuenta: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleAccountStatus = async (account) => {
+    setSaving(true);
+    setMessage("");
+
+    try {
+      await updatePlatformAccountStatus(
+        account.id,
+        account.status === "active" ? "suspended" : "active"
+      );
+      await loadPlatformAccounts();
+      setMessage("Estado de cuenta actualizado.");
+    } catch (error) {
+      setMessage(`No se pudo actualizar la cuenta: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTopUpLoader = async (account) => {
+    setSaving(true);
+    setMessage("");
+
+    try {
+      await adjustBalanceLoaderCredit(account.id, creditTopUpAmount);
+      await loadPlatformAccounts();
+      setMessage("Credito operativo agregado al cargador.");
+    } catch (error) {
+      setMessage(`No se pudo agregar credito: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -290,9 +414,25 @@ function PlayPlatformAdminPanel() {
             <span>Panel administrativo</span>
             <h1>PlayPlatform</h1>
           </div>
-          <a href={createTableLink(selectedTable?.id)} className="admin-header-link">
-            Ir a la mesa
-          </a>
+          <div className="admin-header-actions">
+            <button
+              type="button"
+              className={adminView === "tables" ? "is-active" : ""}
+              onClick={() => setAdminView("tables")}
+            >
+              Mesas
+            </button>
+            <button
+              type="button"
+              className={adminView === "super" ? "is-active" : ""}
+              onClick={() => setAdminView("super")}
+            >
+              Super Admin
+            </button>
+            <a href={createTableLink(selectedTable?.id)} className="admin-header-link">
+              Ir a la mesa
+            </a>
+          </div>
         </header>
 
         {!hasSupabaseConfig && (
@@ -307,6 +447,143 @@ function PlayPlatformAdminPanel() {
           </div>
         )}
 
+        {adminView === "super" ? (
+          <section className="admin-layout admin-super-layout">
+            <aside className="admin-sidebar">
+              <div className="admin-card">
+                <h2>Crear cuenta</h2>
+                <label>
+                  Nombre
+                  <input
+                    value={accountName}
+                    onChange={(event) => setAccountName(event.target.value)}
+                    placeholder="Ej: Cargador Centro"
+                    disabled={saving}
+                  />
+                </label>
+                <label>
+                  Email
+                  <input
+                    type="email"
+                    value={accountEmail}
+                    onChange={(event) => setAccountEmail(event.target.value)}
+                    placeholder="usuario@play.com"
+                    disabled={saving}
+                  />
+                </label>
+                <label>
+                  Rol
+                  <select
+                    value={accountRole}
+                    onChange={(event) => setAccountRole(event.target.value)}
+                    disabled={saving}
+                  >
+                    <option value="balance_loader">Cargador de saldo</option>
+                    <option value="player">Jugador</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
+                </label>
+                {accountRole === "balance_loader" && (
+                  <label>
+                    Credito operativo
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={accountCreditLimit}
+                      onChange={(event) => setAccountCreditLimit(Number(event.target.value))}
+                      disabled={saving}
+                    />
+                  </label>
+                )}
+                <button type="button" onClick={handleCreateAccount} disabled={saving}>
+                  Crear cuenta
+                </button>
+              </div>
+
+              <div className="admin-card">
+                <h2>Recargar cargador</h2>
+                <label>
+                  Monto
+                  <input
+                    type="number"
+                    min="1000"
+                    step="1000"
+                    value={creditTopUpAmount}
+                    onChange={(event) => setCreditTopUpAmount(Number(event.target.value))}
+                    disabled={saving}
+                  />
+                </label>
+              </div>
+            </aside>
+
+            <section className="admin-main">
+              <div className="admin-summary">
+                <div>
+                  <span>Super Admins</span>
+                  <strong>{accountSummary.superAdmins}</strong>
+                </div>
+                <div>
+                  <span>Cargadores</span>
+                  <strong>{accountSummary.balanceLoaders}</strong>
+                </div>
+                <div>
+                  <span>Usuarios</span>
+                  <strong>{accountSummary.players}</strong>
+                </div>
+                <div>
+                  <span>Credito disponible</span>
+                  <strong>{formatMoney(accountSummary.availableCredit)} Gs</strong>
+                </div>
+              </div>
+
+              <div className="admin-card">
+                <div className="admin-card-head">
+                  <h2>Cuentas operativas</h2>
+                  <span>{accountsLoading ? "Cargando..." : `${platformAccounts.length} cuentas`}</span>
+                </div>
+                <div className="admin-account-list">
+                  {platformAccounts.length === 0 && (
+                    <span>No hay cuentas operativas creadas.</span>
+                  )}
+                  {platformAccounts.map((account) => (
+                    <article key={account.id} className="admin-account-row">
+                      <div className={`admin-role-badge role-${account.role}`}>
+                        {getRoleLabel(account.role).slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <strong>{account.displayName}</strong>
+                        <span>{account.email}</span>
+                      </div>
+                      <div>
+                        <small>Rol</small>
+                        <strong>{getRoleLabel(account.role)}</strong>
+                      </div>
+                      <div>
+                        <small>Estado</small>
+                        <strong>{getAccountStatusLabel(account.status)}</strong>
+                      </div>
+                      <div>
+                        <small>Credito disponible</small>
+                        <strong>{formatMoney(account.availableCredit)} Gs</strong>
+                      </div>
+                      <div className="admin-row-actions">
+                        {account.role === "balance_loader" && (
+                          <button type="button" onClick={() => handleTopUpLoader(account)} disabled={saving}>
+                            Agregar credito
+                          </button>
+                        )}
+                        <button type="button" onClick={() => handleToggleAccountStatus(account)} disabled={saving}>
+                          {account.status === "active" ? "Suspender" : "Activar"}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </section>
+        ) : (
         <section className="admin-layout">
           <aside className="admin-sidebar">
             <div className="admin-card">
@@ -533,6 +810,7 @@ function PlayPlatformAdminPanel() {
             </div>
           </aside>
         </section>
+        )}
       </section>
     </main>
   );

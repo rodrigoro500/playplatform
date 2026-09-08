@@ -27,12 +27,21 @@
   padding: 16px 20px;
 }
 
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .admin-header span,
 .admin-card-head span,
 .admin-summary span,
 .admin-player-row small,
 .admin-player-row span,
-.admin-pending-list span {
+.admin-pending-list span,
+.admin-account-row small,
+.admin-account-row span {
   color: #94a3b8;
   font-size: 11px;
   font-weight: 800;
@@ -54,7 +63,8 @@
 .admin-header-link,
 .admin-row-actions a,
 .admin-pending-list a,
-.admin-card button {
+.admin-card button,
+.admin-header-actions button {
   border: 1px solid rgba(52, 211, 153, 0.42);
   border-radius: 8px;
   background: rgba(16, 185, 129, 0.12);
@@ -67,6 +77,12 @@
   text-align: center;
   text-decoration: none;
   text-transform: uppercase;
+}
+
+.admin-header-actions button.is-active {
+  border-color: rgba(250, 204, 21, 0.46);
+  background: linear-gradient(135deg, #fde047, #f97316);
+  color: #111827;
 }
 
 .admin-card button:disabled,
@@ -92,6 +108,10 @@
   grid-template-columns: 260px minmax(0, 1fr) 260px;
   gap: 14px;
   margin-top: 14px;
+}
+
+.admin-super-layout {
+  grid-template-columns: 280px minmax(0, 1fr);
 }
 
 .admin-sidebar,
@@ -263,6 +283,59 @@
   padding: 10px;
 }
 
+.admin-account-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-account-list > span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-account-row {
+  display: grid;
+  grid-template-columns: 42px minmax(150px, 1fr) minmax(110px, 140px) minmax(110px, 140px) minmax(140px, 170px) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px;
+}
+
+.admin-account-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-role-badge {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(250, 204, 21, 0.38);
+  border-radius: 999px;
+  background: radial-gradient(circle, #92400e, #020617);
+  color: #fef3c7;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.admin-role-badge.role-balance_loader {
+  border-color: rgba(52, 211, 153, 0.38);
+  background: radial-gradient(circle, #14532d, #020617);
+  color: #d1fae5;
+}
+
+.admin-role-badge.role-player {
+  border-color: rgba(96, 165, 250, 0.38);
+  background: radial-gradient(circle, #1d4ed8, #020617);
+  color: #dbeafe;
+}
+
 .admin-avatar {
   display: grid;
   place-items: center;
@@ -338,6 +411,10 @@
     grid-template-columns: 42px 1fr;
   }
 
+  .admin-account-row {
+    grid-template-columns: 42px 1fr;
+  }
+
   .admin-row-actions {
     grid-column: 1 / -1;
     grid-template-columns: repeat(3, 1fr);
@@ -350,6 +427,7 @@
   }
 
   .admin-header,
+  .admin-header-actions,
   .admin-card-head,
   .admin-inline-form {
     grid-template-columns: 1fr;

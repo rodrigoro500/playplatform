@@ -62,6 +62,47 @@ exception
   when duplicate_object then null;
 end $$;
 
+do $$ begin
+  create type public.playplatform_account_role as enum (
+    'super_admin',
+    'balance_loader',
+    'player'
+  );
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type public.playplatform_account_status as enum (
+    'active',
+    'suspended'
+  );
+exception
+  when duplicate_object then null;
+end $$;
+
+create table if not exists public.platform_accounts (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid unique,
+  email text not null unique,
+  display_name text not null,
+  role public.playplatform_account_role not null default 'player',
+  status public.playplatform_account_status not null default 'active',
+  credit_limit integer not null default 0 check (credit_limit >= 0),
+  available_credit integer not null default 0 check (available_credit >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.platform_account_events (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid references public.platform_accounts(id) on delete set null,
+  event_type text not null,
+  amount integer not null default 0,
+  description text,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.play_tables (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
@@ -168,6 +209,12 @@ create index if not exists wallet_transactions_wallet_id_created_at_idx
 create index if not exists table_events_table_id_created_at_idx
   on public.table_events(table_id, created_at desc);
 
+create index if not exists platform_accounts_role_status_idx
+  on public.platform_accounts(role, status);
+
+create index if not exists platform_account_events_account_id_created_at_idx
+  on public.platform_account_events(account_id, created_at desc);
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -199,6 +246,12 @@ execute function public.set_updated_at();
 drop trigger if exists set_game_snapshots_updated_at on public.game_snapshots;
 create trigger set_game_snapshots_updated_at
 before update on public.game_snapshots
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists set_platform_accounts_updated_at on public.platform_accounts;
+create trigger set_platform_accounts_updated_at
+before update on public.platform_accounts
 for each row
 execute function public.set_updated_at();
 
@@ -250,6 +303,8 @@ alter table public.chip_requests enable row level security;
 alter table public.wallet_transactions enable row level security;
 alter table public.table_events enable row level security;
 alter table public.game_snapshots enable row level security;
+alter table public.platform_accounts enable row level security;
+alter table public.platform_account_events enable row level security;
 
 -- MVP policies for first public testing.
 -- These are intentionally permissive until PlayPlatform adds real admin/player auth.
@@ -342,6 +397,32 @@ create policy "mvp public write game snapshots"
 on public.game_snapshots for all
 using (true)
 with check (true);
+
+drop policy if exists "mvp public read platform accounts" on public.platform_accounts;
+create policy "mvp public read platform accounts"
+on public.platform_accounts for select
+using (true);
+
+drop policy if exists "mvp public write platform accounts" on public.platform_accounts;
+create policy "mvp public write platform accounts"
+on public.platform_accounts for all
+using (true)
+with check (true);
+
+drop policy if exists "mvp public read platform account events" on public.platform_account_events;
+create policy "mvp public read platform account events"
+on public.platform_account_events for select
+using (true);
+
+drop policy if exists "mvp public write platform account events" on public.platform_account_events;
+create policy "mvp public write platform account events"
+on public.platform_account_events for all
+using (true)
+with check (true);
+
+insert into public.platform_accounts(email, display_name, role, status, credit_limit, available_credit)
+values ('admin@play.local', 'Super Admin PLAY', 'super_admin', 'active', 0, 0)
+on conflict (email) do nothing;
 
 insert into public.play_tables(code, name, game_type, status, min_main_pot, max_players)
 values ('PASE-1024', 'Pase VIP #1024', 'PASE', 'open', 20000, 8)

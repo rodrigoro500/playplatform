@@ -41,12 +41,181 @@ function mapTable(row) {
   };
 }
 
+function mapPlatformAccount(row) {
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.display_name,
+    role: row.role,
+    status: row.status,
+    creditLimit: row.credit_limit ?? 0,
+    availableCredit: row.available_credit ?? 0,
+    createdAt: row.created_at,
+  };
+}
+
 function requireSupabase() {
   if (!hasSupabaseConfig || !supabase) {
     throw new Error("Falta configurar Supabase.");
   }
 
   return supabase;
+}
+
+async function fetchPlatformAccounts() {
+  if (!hasSupabaseConfig) {
+    return [];
+  }
+
+  const client = requireSupabase();
+  const {
+    data,
+    error,
+  } = await client
+    .from("platform_accounts")
+    .select(`
+      id,
+      email,
+      display_name,
+      role,
+      status,
+      credit_limit,
+      available_credit,
+      created_at
+    `)
+    .order("created_at", {
+      ascending: false,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(mapPlatformAccount);
+}
+
+async function createPlatformAccount({
+  displayName,
+  email,
+  role,
+  creditLimit = 0,
+}) {
+  const client = requireSupabase();
+  const cleanName =
+    displayName.trim();
+  const cleanEmail =
+    email.trim().toLowerCase();
+  const normalizedRole =
+    ["super_admin", "balance_loader", "player"].includes(role) ? role : "player";
+  const normalizedCredit =
+    normalizedRole === "balance_loader" ?
+      Math.max(0, Number(creditLimit) || 0) :
+      0;
+
+  if (cleanName.length < 2) {
+    throw new Error("Nombre invalido.");
+  }
+
+  if (!cleanEmail.includes("@")) {
+    throw new Error("Email invalido.");
+  }
+
+  const {
+    data,
+    error,
+  } = await client
+    .from("platform_accounts")
+    .insert({
+      display_name: cleanName,
+      email: cleanEmail,
+      role: normalizedRole,
+      status: "active",
+      credit_limit: normalizedCredit,
+      available_credit: normalizedCredit,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapPlatformAccount(data);
+}
+
+async function updatePlatformAccountStatus(accountId, status) {
+  const client = requireSupabase();
+  const normalizedStatus =
+    status === "suspended" ? "suspended" : "active";
+  const {
+    error,
+  } = await client
+    .from("platform_accounts")
+    .update({
+      status: normalizedStatus,
+    })
+    .eq("id", accountId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function adjustBalanceLoaderCredit(accountId, amount) {
+  const client = requireSupabase();
+  const creditAmount =
+    Math.max(0, Number(amount) || 0);
+
+  if (creditAmount <= 0) {
+    throw new Error("Ingresa un monto mayor a cero.");
+  }
+
+  const {
+    data: account,
+    error: accountError,
+  } = await client
+    .from("platform_accounts")
+    .select("id, credit_limit, available_credit")
+    .eq("id", accountId)
+    .single();
+
+  if (accountError) {
+    throw accountError;
+  }
+
+  const nextCreditLimit =
+    (Number(account.credit_limit) || 0) + creditAmount;
+  const nextAvailableCredit =
+    (Number(account.available_credit) || 0) + creditAmount;
+
+  const {
+    error: updateError,
+  } = await client
+    .from("platform_accounts")
+    .update({
+      credit_limit: nextCreditLimit,
+      available_credit: nextAvailableCredit,
+    })
+    .eq("id", accountId);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  const {
+    error: ledgerError,
+  } = await client
+    .from("platform_account_events")
+    .insert({
+      account_id: accountId,
+      event_type: "credit_limit_added",
+      amount: creditAmount,
+      description: "Credito operativo agregado por Super Admin",
+    });
+
+  if (ledgerError) {
+    throw ledgerError;
+  }
 }
 
 async function fetchTables() {
@@ -658,9 +827,12 @@ export {
   claimInvite,
   createInvite,
   createInviteCode,
+  createPlatformAccount,
   createTable,
   deletePlayer,
+  adjustBalanceLoaderCredit,
   fetchGameSnapshot,
+  fetchPlatformAccounts,
   fetchTableById,
   fetchTables,
   findInvite,
@@ -668,5 +840,6 @@ export {
   requestTableSeat,
   saveGameSnapshot,
   syncPlayerWalletBalances,
+  updatePlatformAccountStatus,
   updatePlayerVoice,
 };
