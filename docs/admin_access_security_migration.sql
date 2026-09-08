@@ -1,9 +1,9 @@
 -- PlayPlatform Admin Access Security
 -- Run this after creating at least one real Super Admin account.
--- Replace tu-email@ejemplo.com with the email you use to log in.
+-- Only rodrigoro_500@hotmail.com can hold the Super Admin role.
 
 insert into public.platform_accounts(email, display_name, role, status, credit_limit, available_credit)
-values ('tu-email@ejemplo.com', 'Super Admin PLAY', 'super_admin', 'active', 0, 0)
+values ('rodrigoro_500@hotmail.com', 'Rodrigo Roman', 'super_admin', 'active', 0, 0)
 on conflict (email) do update
 set
   role = 'super_admin',
@@ -42,16 +42,23 @@ drop policy if exists "mvp public read platform accounts" on public.platform_acc
 drop policy if exists "mvp public write platform accounts" on public.platform_accounts;
 drop policy if exists "admin read platform accounts" on public.platform_accounts;
 drop policy if exists "admin write platform accounts" on public.platform_accounts;
+drop policy if exists "admin manage platform accounts" on public.platform_accounts;
 drop policy if exists "self read platform account" on public.platform_accounts;
 
 create policy "admin read platform accounts"
 on public.platform_accounts for select
 using (public.playplatform_is_super_admin());
 
-create policy "admin write platform accounts"
+create policy "admin manage platform accounts"
 on public.platform_accounts for all
 using (public.playplatform_is_super_admin())
-with check (public.playplatform_is_super_admin());
+with check (
+  public.playplatform_is_super_admin()
+  and (
+    role <> 'super_admin'
+    or lower(email) = 'rodrigoro_500@hotmail.com'
+  )
+);
 
 create policy "self read platform account"
 on public.platform_accounts for select

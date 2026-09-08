@@ -3,6 +3,8 @@ import {
   supabase,
 } from "./supabaseClient";
 
+const PRIMARY_SUPER_ADMIN_EMAIL = "rodrigoro_500@hotmail.com";
+
 function createTableCode(gameType = "PASE") {
   return `${gameType}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
@@ -205,6 +207,10 @@ async function createPlatformAccount({
 
   if (!cleanEmail.includes("@")) {
     throw new Error("Email invalido.");
+  }
+
+  if (normalizedRole === "super_admin" && cleanEmail !== PRIMARY_SUPER_ADMIN_EMAIL) {
+    throw new Error("Solo el correo principal puede ser Super Admin.");
   }
 
   const {
