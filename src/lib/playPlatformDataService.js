@@ -44,6 +44,7 @@ function mapTable(row) {
 function mapPlatformAccount(row) {
   return {
     id: row.id,
+    authUserId: row.auth_user_id,
     email: row.email,
     displayName: row.display_name,
     role: row.role,
@@ -92,6 +93,92 @@ async function fetchPlatformAccounts() {
   }
 
   return (data ?? []).map(mapPlatformAccount);
+}
+
+async function fetchCurrentPlatformAccount(session) {
+  if (!hasSupabaseConfig || !session?.user?.email) {
+    return null;
+  }
+
+  const client = requireSupabase();
+  const cleanEmail =
+    session.user.email.trim().toLowerCase();
+  const userId =
+    session.user.id;
+
+  let account = null;
+
+  if (userId) {
+    const {
+      data,
+      error,
+    } = await client
+      .from("platform_accounts")
+      .select(`
+        id,
+        auth_user_id,
+        email,
+        display_name,
+        role,
+        status,
+        credit_limit,
+        available_credit,
+        created_at
+      `)
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    account = data;
+  }
+
+  if (!account) {
+    const {
+      data,
+      error,
+    } = await client
+      .from("platform_accounts")
+      .select(`
+        id,
+        auth_user_id,
+        email,
+        display_name,
+        role,
+        status,
+        credit_limit,
+        available_credit,
+        created_at
+      `)
+      .eq("email", cleanEmail)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    account = data;
+  }
+
+  if (!account) {
+    return null;
+  }
+
+  if (userId && !account.auth_user_id) {
+    await client
+      .from("platform_accounts")
+      .update({
+        auth_user_id: userId,
+      })
+      .eq("id", account.id);
+  }
+
+  return mapPlatformAccount({
+    ...account,
+    auth_user_id: account.auth_user_id ?? userId,
+  });
 }
 
 async function createPlatformAccount({
@@ -832,6 +919,7 @@ export {
   deletePlayer,
   adjustBalanceLoaderCredit,
   fetchGameSnapshot,
+  fetchCurrentPlatformAccount,
   fetchPlatformAccounts,
   fetchTableById,
   fetchTables,

@@ -8,6 +8,17 @@ import {
 } from "../lib/supabaseClient";
 import "./PlayPlatformLoginPage.css";
 
+function getSafeNextPath() {
+  const nextPath =
+    new URLSearchParams(window.location.search).get("next");
+
+  if (!nextPath?.startsWith("/") || nextPath.startsWith("//")) {
+    return "/";
+  }
+
+  return nextPath;
+}
+
 function PlayPlatformLoginPage() {
   const [mode, setMode] = useState("login");
   const [session, setSession] = useState(null);
@@ -16,6 +27,7 @@ function PlayPlatformLoginPage() {
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const nextPath = getSafeNextPath();
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -92,6 +104,7 @@ function PlayPlatformLoginPage() {
         }
 
         setMessage("Sesion iniciada correctamente.");
+        window.location.href = nextPath;
       }
     } catch (error) {
       setMessage(`No se pudo continuar: ${error.message}`);
@@ -129,7 +142,9 @@ function PlayPlatformLoginPage() {
               <strong>{session.user.email}</strong>
               <p>Tu cuenta queda lista para la siguiente fase: conservar fichas y entrar a mesas disponibles.</p>
               <div className="login-actions">
-                <a href="/">Volver al lobby</a>
+                <a href={nextPath === "/" ? "/" : nextPath}>
+                  {nextPath === "/" ? "Volver al lobby" : "Continuar"}
+                </a>
                 <button type="button" onClick={signOut}>
                   Cerrar sesion
                 </button>

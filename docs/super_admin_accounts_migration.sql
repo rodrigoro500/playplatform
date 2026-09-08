@@ -82,3 +82,6 @@ with check (true);
 insert into public.platform_accounts(email, display_name, role, status, credit_limit, available_credit)
 values ('admin@play.local', 'Super Admin PLAY', 'super_admin', 'active', 0, 0)
 on conflict (email) do nothing;
+
+-- After the first setup, run docs/admin_access_security_migration.sql
+-- to register your real Super Admin email and close the public MVP policies.
