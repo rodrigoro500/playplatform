@@ -17,6 +17,7 @@ import {
   syncPlayerWalletBalances,
 } from "../../../lib/playPlatformDataService";
 import useTableVoice from "../../../voice/useTableVoice";
+import { getSeatDisplayIndex, resolveTablePlayerId } from "./tablePlayerIdentity";
 import "./PlayPlatformCasinoExperience.css";
 
 const phaseLabels = {
@@ -1052,7 +1053,7 @@ function GameTable({
         <PlayerBadge
           key={player.id}
           player={player}
-          index={index}
+          index={getSeatDisplayIndex(index, players, currentPlayerId)}
           prompted={table.mainPot.promptedCoverPlayerId === player.id}
           current={currentPlayerId === player.id}
           quickBet={latestBets.get(player.id)}
@@ -1088,7 +1089,7 @@ function GameTable({
       }, (_, offset) => (
         <AvailableSeat
           key={`available-${offset}`}
-          index={players.length + offset}
+          index={getSeatDisplayIndex(players.length + offset, players, currentPlayerId)}
           onRequestSeat={onRequestSeat}
           disabled={!canRequestSeat}
         />
@@ -1429,7 +1430,7 @@ function PlayPlatformCasinoExperience() {
   const isCurrentApprovedPlayer =
     Boolean(tableId && currentPlayerId && players.some((player) => player.id === currentPlayerId));
   const canRequestSeat =
-    Boolean(tableId && !isCurrentApprovedPlayer && players.length < 8);
+    Boolean(tableId && !resolvedLivePlayerId && !isCurrentApprovedPlayer && players.length < 8);
   const quickBetStatus =
     getQuickBetWindowStatus(table.quickBetWindow, nowMs);
   const quickBetPhase =
@@ -1539,10 +1540,12 @@ function PlayPlatformCasinoExperience() {
     setSeatRequestMessage("");
 
     try {
-      await requestTableSeat({
+      const requestedPlayer = await requestTableSeat({
         tableId,
         displayName,
       });
+      storePlayerId(tableId, requestedPlayer.id);
+      setResolvedLivePlayerId(requestedPlayer.id);
       setSeatRequestName("");
       setSeatRequestMessage("Solicitud enviada. Espera que el admin habilite tus fichas.");
       setLiveTableStatus("Solicitud enviada al administrador.");
@@ -1643,10 +1646,9 @@ function PlayPlatformCasinoExperience() {
           resolvedLivePlayerId,
           storedPlayerId,
         ].filter(Boolean);
-        const selectedLivePlayerId =
-          candidatePlayerIds.find((playerId) => (
-            runtimePlayers.some((player) => player.id === playerId)
-          )) ?? "";
+        const selectedLivePlayerId = resolveTablePlayerId(
+          nextLiveTable?.players ?? [], candidatePlayerIds
+        );
 
         if (!isMounted) {
           return;
@@ -1693,6 +1695,8 @@ function PlayPlatformCasinoExperience() {
           }
         }
         setLiveTableStatus(
+          selectedLivePlayerId && !runtimePlayers.some((player) => player.id === selectedLivePlayerId) ?
+            "Solicitud enviada. Espera la aprobacion del administrador." :
           runtimePlayers.length === 0 ?
             "Mesa libre: esperando jugadores aprobados" :
           selectedLivePlayerId ?
