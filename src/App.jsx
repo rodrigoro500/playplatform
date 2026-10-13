@@ -119,6 +119,9 @@ function AdminAccessGate({
                   Iniciar sesion
                 </a>
               )}
+              {status === "login" && <a href={`/login?mode=recover&next=${encodeURIComponent(nextPath)}`}>
+                Olvide mi contrasena
+              </a>}
               <a href="/">Volver al lobby</a>
             </div>
           </div>
@@ -129,7 +132,7 @@ function AdminAccessGate({
 }
 
 function App() {
-  if (window.location.pathname === "/login") {
+  if (window.location.pathname === "/login" || new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery") {
     return <PlayPlatformLoginPage />;
   }
 

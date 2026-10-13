@@ -20,10 +20,15 @@ function getSafeNextPath() {
 }
 
 function PlayPlatformLoginPage() {
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState(() => (
+    new URLSearchParams(window.location.search).get("recovery") === "1" ||
+    new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery" ?
+      "update" : new URLSearchParams(window.location.search).get("mode") === "recover" ? "recover" : "login"
+  ));
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -46,7 +51,11 @@ function PlayPlatformLoginPage() {
 
     const {
       data: authListener,
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("update");
+        setPassword("");
+      }
       setSession(nextSession);
     });
 
@@ -64,7 +73,21 @@ function PlayPlatformLoginPage() {
       return;
     }
 
-    if (!email.trim() || password.length < 6) {
+    if (mode === "recover") {
+      if (!email.trim() || !email.includes("@")) {
+        setMessage("Ingresa el correo de tu cuenta.");
+        return;
+      }
+    } else if (mode === "update") {
+      if (!session) {
+        setMessage("Abri el enlace de recuperacion recibido por correo o solicita uno nuevo.");
+        return;
+      }
+      if (password.length < 6 || password !== confirmPassword) {
+        setMessage("Las contrasenas deben coincidir y tener al menos 6 caracteres.");
+        return;
+      }
+    } else if (!email.trim() || password.length < 6) {
       setMessage("Ingresa email y una contrasena de al menos 6 caracteres.");
       return;
     }
@@ -73,7 +96,21 @@ function PlayPlatformLoginPage() {
     setMessage("");
 
     try {
-      if (mode === "register") {
+      if (mode === "recover") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/login?recovery=1&next=${encodeURIComponent(nextPath)}`,
+        });
+        if (error) throw error;
+        setMessage("Si ese correo tiene una cuenta, recibiras un enlace para cambiar tu contrasena. Revisa tambien spam y correo no deseado.");
+      } else if (mode === "update") {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        setPassword("");
+        setConfirmPassword("");
+        setMode("login");
+        window.history.replaceState(null, "", `/login?next=${encodeURIComponent(nextPath)}`);
+        setMessage("Contrasena actualizada. Pulsa Continuar para entrar.");
+      } else if (mode === "register") {
         const {
           error,
         } = await supabase.auth.signUp({
@@ -169,12 +206,12 @@ function PlayPlatformLoginPage() {
           </a>
           <div>
             <span>Cuenta PlayPlatform</span>
-            <h1>{mode === "register" ? "Registrarse" : "Iniciar sesion"}</h1>
+            <h1>{mode === "update" ? "Nueva contrasena" : mode === "recover" ? "Recuperar acceso" : mode === "register" ? "Registrarse" : "Iniciar sesion"}</h1>
           </div>
         </header>
 
         <section className="login-card">
-          {session ? (
+          {session && mode !== "update" && mode !== "recover" ? (
             <div className="login-session">
               <span>Sesion activa</span>
               <strong>{session.user.email}</strong>
@@ -190,7 +227,7 @@ function PlayPlatformLoginPage() {
             </div>
           ) : (
             <>
-              <div className="login-tabs">
+              {mode !== "update" && <div className="login-tabs">
                 <button
                   type="button"
                   className={mode === "login" ? "is-active" : ""}
@@ -205,7 +242,7 @@ function PlayPlatformLoginPage() {
                 >
                   Registrarse
                 </button>
-              </div>
+              </div>}
 
               <form className="login-form" onSubmit={submit}>
                 {mode === "register" && (
@@ -220,31 +257,47 @@ function PlayPlatformLoginPage() {
                   </label>
                 )}
 
-                <label>
+                {mode !== "update" && <label>
                   Email
                   <input
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="tu@email.com"
+                    autoComplete="email"
+                    required
                     disabled={saving}
                   />
-                </label>
+                </label>}
 
-                <label>
-                  Contrasena
+                {mode !== "recover" && <label>
+                  {mode === "update" ? "Nueva contrasena" : "Contrasena"}
                   <input
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Minimo 6 caracteres"
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    required
+                    minLength={6}
                     disabled={saving}
                   />
-                </label>
+                </label>}
+                {mode === "update" && <label>
+                  Repetir nueva contrasena
+                  <input type="password" autoComplete="new-password" required minLength={6}
+                    value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={saving} />
+                </label>}
 
                 <button type="submit" disabled={saving}>
-                  {saving ? "Procesando..." : mode === "register" ? "Crear cuenta" : "Entrar"}
+                  {saving ? "Procesando..." : mode === "recover" ? "Enviar enlace de recuperacion" : mode === "update" ? "Guardar nueva contrasena" : mode === "register" ? "Crear cuenta" : "Entrar"}
                 </button>
+                {mode !== "register" && (
+                  <button type="button" className="login-secondary-action" disabled={saving}
+                    onClick={() => { setMode(mode === "recover" ? "login" : "recover"); setMessage(""); setPassword(""); setConfirmPassword(""); }}>
+                    {mode === "recover" ? "Volver a iniciar sesion" : mode === "update" ? "Solicitar otro enlace" : "Olvide mi contrasena"}
+                  </button>
+                )}
                 {mode === "register" && (
                   <button
                     type="button"
@@ -260,7 +313,7 @@ function PlayPlatformLoginPage() {
           )}
 
           {message && (
-            <div className="login-message">
+            <div className="login-message" role="status">
               {message}
             </div>
           )}
